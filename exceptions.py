@@ -1,2 +1,0 @@
-class WrongShapeError(Exception):
-    pass

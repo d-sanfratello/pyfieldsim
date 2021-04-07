@@ -22,7 +22,7 @@ class SkySource:
         self.magnitude = None
 
     def initialize(self, e_imf=2.4, e_lm=3, cst_lm=1):
-        self.mass = self.random_cimf(rd.random, e=e_imf)
+        self.mass = self.random_cimf(rd.random(), e=e_imf)
         self.luminosity = self.lm_relation(self.mass, e=e_lm, cst=cst_lm)
         self.magnitude = self.l2mag(self.luminosity)
 

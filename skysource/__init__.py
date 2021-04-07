@@ -1,1 +1,1 @@
-from skysource import SkySource
+from fieldsim.skysource import skysource

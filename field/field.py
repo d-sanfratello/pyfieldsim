@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import warnings
 
@@ -11,6 +12,9 @@ from fieldsim.skysource import SkySource
 
 
 class Field:
+    __valid_fields = ['true']
+    __attributes = {'true': 'true_field'}
+
     def __init__(self, shape):
         if not isinstance(shape, tuple) or len(shape) != 2:
             raise WrongShapeError
@@ -30,7 +34,7 @@ class Field:
         self.__initialized = True
 
         rand_distribution = np.random.random(self.shape)
-        stars_coords_array = np.argwhere(rand_distribution <= density)
+        stars_coords_array = np.argwhere(rand_distribution <= density).reshape(self.shape)
 
         self.sources = np.array([SkySource(coords) for coords in stars_coords_array])
         self.true_field = np.zeros(self.shape)
@@ -38,3 +42,19 @@ class Field:
         for source in self.sources:
             source.initialize(e_imf, e_lm, cst_lm)
             self.true_field[source.coords] = source.magnitude
+
+    def show_field(self, field='true'):
+        if not isinstance(field, str):
+            raise TypeError('`field` argument must be a string.')
+        elif isinstance(field, str) and field not in self.__valid_fields:
+            raise ValueError('`field` argument not in accepted list of valid fields.')
+
+        image = getattr(self, self.__attributes[field])
+
+        fig = plt.figure()
+        ax1 = fig.gca()
+        ax1.grid()
+
+        ax1.imshow(image, origin='lower')
+
+        plt.show()

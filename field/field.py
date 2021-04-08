@@ -34,14 +34,13 @@ class Field:
         self.__initialized = True
 
         rand_distribution = np.random.random(self.shape)
-        stars_coords_array = np.argwhere(rand_distribution <= density).reshape(self.shape)
+        stars_coords_array = np.argwhere(rand_distribution <= density)
 
-        self.sources = np.array([SkySource(coords) for coords in stars_coords_array])
+        self.sources = np.array([SkySource(coords).initialize(e_imf, e_lm, cst_lm) for coords in stars_coords_array])
         self.true_field = np.zeros(self.shape)
 
         for source in self.sources:
-            source.initialize(e_imf, e_lm, cst_lm)
-            self.true_field[source.coords] = source.magnitude
+            self.true_field[source.coords[0], source.coords[1]] = source.luminosity
 
     def show_field(self, field='true'):
         if not isinstance(field, str):
@@ -55,6 +54,10 @@ class Field:
         ax1 = fig.gca()
         ax1.grid()
 
-        ax1.imshow(image, origin='lower')
+        im = ax1.imshow(image, origin='lower', cmap='binary')
+        ax1.set_xlabel('RA')
+        ax1.set_ylabel('DEC')
 
+        cbar = fig.colorbar(im)
+        cbar.ax.set_ylabel('L$_X$')
         plt.show()

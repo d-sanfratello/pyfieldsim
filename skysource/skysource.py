@@ -26,6 +26,8 @@ class SkySource:
         self.luminosity = self.lm_relation(self.mass, e=e_lm, cst=cst_lm)
         self.magnitude = self.l2mag(self.luminosity)
 
+        return self
+
     @staticmethod
     def random_cimf(cimf, e=2.4):
         if e <= 1:

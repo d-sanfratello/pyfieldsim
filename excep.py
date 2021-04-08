@@ -11,3 +11,8 @@ class WrongCoordsFormatError(Exception):
 class WrongCoordsLengthError(Exception):
     def __str__(self):
         return "Coordinates for source are not 2D coordinates."
+
+
+class InvalidExtensionError(Exception):
+    def __str__(self):
+        return "Invalid file extension. Must be either 'txt' or 'fits'."

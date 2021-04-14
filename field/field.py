@@ -4,11 +4,13 @@ import warnings
 
 from scipy.stats import norm
 
+from fieldsim.field import ImageStatus
+from fieldsim.skysource import SkySource
+
 from fieldsim.excep import WrongShapeError
+from fieldsim.excep import NotInitializedError
 from fieldsim.warn import FieldNotInitializedWarning
 from fieldsim.warn import FieldAlreadyInitializedWarning
-
-from fieldsim.skysource import SkySource
 
 
 class Field:
@@ -25,6 +27,8 @@ class Field:
         self.true_field = None
         self.sources = None
 
+        self.status = ImageStatus().NOTINIT
+
     def initialize_field(self, density=0.05, force=False,
                          e_imf=2.4, e_lm=3, cst_lm=1):
         if self.__initialized and not force:
@@ -38,6 +42,8 @@ class Field:
 
         self.sources = np.array([SkySource(coords).initialize(e_imf, e_lm, cst_lm) for coords in stars_coords_array])
         self.true_field = np.zeros(self.shape)
+
+        self.status = ImageStatus().SINGLESTARS
 
         for source in self.sources:
             self.true_field[source.coords[0], source.coords[1]] = source.luminosity
@@ -61,3 +67,10 @@ class Field:
         cbar = fig.colorbar(im)
         cbar.ax.set_ylabel('L$_X$')
         plt.show()
+
+    @property
+    def shot(self):
+        if self.status == ImageStatus().NOTINIT:
+            raise NotInitializedError
+        elif self.status == ImageStatus().SINGLESTARS:
+            return self.true_field

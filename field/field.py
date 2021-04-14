@@ -84,7 +84,7 @@ class Field:
         ax1.set_ylabel('DEC')
 
         cbar = fig.colorbar(im)
-        cbar.ax.set_ylabel('L$_X$')
+        cbar.ax.set_ylabel(self.datatype.capitalize())
         plt.show()
 
     @property

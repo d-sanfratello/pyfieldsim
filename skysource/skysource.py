@@ -6,7 +6,7 @@ from fieldsim.excep import WrongCoordsLengthError
 
 
 class SkySource:
-    def __init__(self, coords):
+    def __init__(self, coords, m_min=1):
         try:
             iter(coords)
         except TypeError:
@@ -16,6 +16,8 @@ class SkySource:
                 raise WrongCoordsLengthError
 
         self.coords = coords
+
+        self.__m_min = m_min
 
         self.mass = None
         self.luminosity = None
@@ -28,12 +30,11 @@ class SkySource:
 
         return self
 
-    @staticmethod
-    def random_cimf(cimf, e=2.4):
+    def random_cimf(self, cimf, e=2.4):
         if e <= 1:
             raise ValueError("IMF exponent cannot be smaller or equal to 1.")
 
-        return (cimf + 1) ** (1 / (1 - e))
+        return self.m_min * (1 - cimf) ** (1 / (1 - e))
 
     @staticmethod
     def lm_relation(mass, e=3, cst=1):
@@ -45,3 +46,7 @@ class SkySource:
     @staticmethod
     def l2mag(luminosity):
         return -2.5 * np.log10(luminosity)
+
+    @property
+    def m_min(self):
+        return self.__m_min

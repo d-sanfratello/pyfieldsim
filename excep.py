@@ -16,3 +16,13 @@ class WrongCoordsLengthError(Exception):
 class InvalidExtensionError(Exception):
     def __str__(self):
         return "Invalid file extension. Must be either 'txt' or 'fits'."
+
+
+class IncompatibleStatusError(Exception):
+    def __str__(self):
+        return "Operation requeste is incompatible with the status of the image."
+
+
+class NotInitializedError(Exception):
+    def __str__(self):
+        return "Field has not been initialized."

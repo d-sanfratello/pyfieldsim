@@ -63,7 +63,7 @@ class Observation:
 
                 image_copy[coords] = 0
                 image_brighter = image_copy.min()
-        elif self.datatype == DataType().LUMINOSITY:
+        elif self.datatype == DataType().LUMINOSITY or self.datatype == DataType().MASS:
             image_brighter = image_copy.max()
             while image_brighter > 0:
                 coords = np.argmax(image_copy)

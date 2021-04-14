@@ -4,8 +4,8 @@ from astropy.io import fits
 from path import Path
 
 from fieldsim.field import Field
-from fieldsim.field import ImageStatus
-from fieldsim.observation import DataType
+from fieldsim.utils import ImageStatus
+from fieldsim.utils import DataType
 
 from fieldsim.excep import InvalidExtensionError
 from fieldsim.excep import IncompatibleStatusError

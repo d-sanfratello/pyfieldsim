@@ -4,9 +4,9 @@ import warnings
 
 from scipy.stats import norm
 
-from fieldsim.field import ImageStatus
 from fieldsim.skysource import SkySource
-from fieldsim.observation import DataType
+from fieldsim.utils import DataType
+from fieldsim.utils import ImageStatus
 
 from fieldsim.excep import WrongShapeError
 from fieldsim.excep import NotInitializedError

@@ -6,7 +6,7 @@ from fieldsim.excep import WrongCoordsLengthError
 
 
 class SkySource:
-    def __init__(self, coords, m_min=1):
+    def __init__(self, coords, m_min=1, m_max=350):
         try:
             iter(coords)
         except TypeError:
@@ -18,6 +18,7 @@ class SkySource:
         self.coords = coords
 
         self.__m_min = m_min
+        self.__m_max = m_max
 
         self.mass = None
         self.luminosity = None
@@ -34,7 +35,8 @@ class SkySource:
         if e <= 1:
             raise ValueError("IMF exponent cannot be smaller or equal to 1.")
 
-        return self.m_min * ((1 - cimf) ** (1 / (1 - e)))
+        # setup a max value because, even if unlikely, irrealistically massive stars have been extracted.
+        return ((self.m_max**(1 - e) - self.m_min**(1 - e)) * cimf + self.m_min**(1 - e))**(1 / (1 - e))
 
     @staticmethod
     def lm_relation(mass, e=3, cst=1):
@@ -50,3 +52,7 @@ class SkySource:
     @property
     def m_min(self):
         return self.__m_min
+
+    @property
+    def m_max(self):
+        return self.__m_max

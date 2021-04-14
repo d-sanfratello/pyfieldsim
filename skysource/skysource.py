@@ -34,7 +34,7 @@ class SkySource:
         if e <= 1:
             raise ValueError("IMF exponent cannot be smaller or equal to 1.")
 
-        return self.m_min * (1 - cimf) ** (1 / (1 - e))
+        return self.m_min * ((1 - cimf) ** (1 / (1 - e)))
 
     @staticmethod
     def lm_relation(mass, e=3, cst=1):

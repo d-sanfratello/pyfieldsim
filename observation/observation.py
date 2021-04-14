@@ -21,6 +21,9 @@ class Observation:
     def __init__(self, field, ext='fits'):
         if isinstance(field, Field):
             self.image = field.shot
+
+            self.status = self.__status[field.status]
+            self.datatype = self.__datatype[field.datatype]
         elif isinstance(field, (str, Path)):
             if ext == 'fits':
                 hdulist = fits.open(field)

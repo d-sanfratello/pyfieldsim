@@ -6,6 +6,7 @@ from scipy.stats import norm
 
 from fieldsim.field import ImageStatus
 from fieldsim.skysource import SkySource
+from fieldsim.observation import DataType
 
 from fieldsim.excep import WrongShapeError
 from fieldsim.excep import NotInitializedError
@@ -28,25 +29,43 @@ class Field:
         self.sources = None
 
         self.status = ImageStatus().NOTINIT
+        self.datatype = DataType().NOTINIT
 
     def initialize_field(self, density=0.05, force=False,
-                         e_imf=2.4, e_lm=3, cst_lm=1):
-        if self.__initialized and not force:
+                         e_imf=2.4, e_lm=3, cst_lm=1,
+                         datatype='luminosity'):
+        if not isinstance(force, bool):
+            raise TypeError("`force` argument must be a bool.")
+
+        if not isinstance(datatype, str):
+            raise TypeError("`datatype` argument must be a string.")
+        elif datatype not in ['luminosity', 'magnitude', 'mass']:
+            raise ValueError("`datatype` argument must be \"luminosity\", \"magnitude\" or \"mass\".")
+
+        if not self.__initialized or force:
+            self.__initialized = True
+
+            rand_distribution = np.random.random(self.shape)
+            stars_coords_array = np.argwhere(rand_distribution <= density)
+
+            self.sources = np.array([SkySource(coords).initialize(e_imf, e_lm, cst_lm) for coords in stars_coords_array])
+            self.true_field = np.zeros(self.shape)
+
+            self.status = ImageStatus().SINGLESTARS
+            self.datatype = getattr(DataType(), datatype.upper())
+
+            if self.datatype == 'luminosity':
+                for source in self.sources:
+                    self.true_field[source.coords[0], source.coords[1]] = source.luminosity
+            elif self.datatype == 'magnitude':
+                for source in self.sources:
+                    self.true_field[source.coords[0], source.coords[1]] = source.magnitude
+            elif self.datatype == 'mass':
+                for source in self.sources:
+                    self.true_field[source.coords[0], source.coords[1]] = source.mass
+        elif self.__initialized and not force:
             warnings.warn("Field already initialized, use `force=True` argument to force re-initialization.",
                           FieldAlreadyInitializedWarning)
-
-        self.__initialized = True
-
-        rand_distribution = np.random.random(self.shape)
-        stars_coords_array = np.argwhere(rand_distribution <= density)
-
-        self.sources = np.array([SkySource(coords).initialize(e_imf, e_lm, cst_lm) for coords in stars_coords_array])
-        self.true_field = np.zeros(self.shape)
-
-        self.status = ImageStatus().SINGLESTARS
-
-        for source in self.sources:
-            self.true_field[source.coords[0], source.coords[1]] = source.luminosity
 
     def show_field(self, field='true'):
         if not isinstance(field, str):

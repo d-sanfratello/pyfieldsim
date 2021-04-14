@@ -7,6 +7,8 @@ if __name__ == "__main__":
     fld = Field((200, 200))
     fld.initialize_field(density=0., datatype='mass')
 
+    print(fld.true_field)
+
     fld.show_field(field='true')
 
     obs = Observation(fld)

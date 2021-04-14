@@ -5,7 +5,7 @@ class ImageStatus:
 
     @property
     def SINGLESTARS(self):
-        return 0
+        return 'single_stars'
 
 
 class DataType:
@@ -15,12 +15,19 @@ class DataType:
 
     @property
     def LUMINOSITY(self):
-        return 0
+        return 'luminosity'
 
     @property
     def MAGNITUDE(self):
-        return 1
+        return 'magnitude'
 
     @property
     def MASS(self):
-        return 2
+        return 'mass'
+
+
+_NOINIT = -1
+_status_values = {0: ImageStatus().SINGLESTARS}
+_datatype_values = {0: DataType().LUMINOSITY,
+                    1: DataType().MAGNITUDE,
+                    2: DataType().MASS}

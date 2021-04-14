@@ -54,13 +54,13 @@ class Field:
             self.status = ImageStatus().SINGLESTARS
             self.datatype = getattr(DataType(), datatype.upper())
 
-            if self.datatype == 'luminosity':
+            if self.datatype == DataType().LUMINOSITY:
                 for source in self.sources:
                     self.true_field[source.coords[0], source.coords[1]] = source.luminosity
-            elif self.datatype == 'magnitude':
+            elif self.datatype == DataType().MAGNITUDE:
                 for source in self.sources:
                     self.true_field[source.coords[0], source.coords[1]] = source.magnitude
-            elif self.datatype == 'mass':
+            elif self.datatype == DataType().MASS:
                 for source in self.sources:
                     self.true_field[source.coords[0], source.coords[1]] = source.mass
         elif self.__initialized and not force:

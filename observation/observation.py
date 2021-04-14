@@ -6,15 +6,14 @@ from path import Path
 from fieldsim.field import Field
 from fieldsim.utils import ImageStatus
 from fieldsim.utils import DataType
+from fieldsim.utils import _status_values
+from fieldsim.utils import _datatype_values
 
 from fieldsim.excep import InvalidExtensionError
 from fieldsim.excep import IncompatibleStatusError
 
 
 class Observation:
-    __status = {ImageStatus().SINGLESTARS: 's_stars'}
-    __datatype = {DataType().LUMINOSITY: 'L',
-                  DataType().MAGNITUDE: 'mag'}
     __lst_header = {'status': 1,
                     'datatype': 2}
 
@@ -22,8 +21,8 @@ class Observation:
         if isinstance(field, Field):
             self.image = field.shot
 
-            self.status = self.__status[field.status]
-            self.datatype = self.__datatype[field.datatype]
+            self.status = field.status
+            self.datatype = field.datatype
         elif isinstance(field, (str, Path)):
             if ext == 'fits':
                 hdulist = fits.open(field)
@@ -36,8 +35,8 @@ class Observation:
                 with open(field, 'r') as imfile:
                     lines = imfile.readlines()
                     header_list = lines[0].split()
-                    self.status = self.__status[int(header_list[self.__lst_header['status']])]
-                    self.datatype = self.__datatype[int(header_list[self.__lst_header['datatype']])]
+                    self.status = _status_values[(header_list[self.__lst_header['status']])]
+                    self.datatype = _datatype_values[(header_list[self.__lst_header['datatype']])]
 
                     self.image = np.array([[float(px) for px in line.split()] for line in lines[1:]])
             else:
@@ -46,7 +45,7 @@ class Observation:
             raise IOError("Unknown field passed as argument. Must either be a `Field` object or a path.")
 
     def count_single_stars(self):
-        if self.status != self.__status[ImageStatus().SINGLESTARS]:
+        if self.status != ImageStatus().SINGLESTARS:
             raise IncompatibleStatusError
 
         image_copy = self.image.copy()

@@ -4,3 +4,7 @@ class FieldNotInitializedWarning(UserWarning):
 
 class FieldAlreadyInitializedWarning(UserWarning):
     pass
+
+
+class LowLuminosityWarning(UserWarning):
+    pass

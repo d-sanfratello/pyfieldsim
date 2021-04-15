@@ -10,8 +10,12 @@ from fieldsim.utils import ImageStatus
 
 from fieldsim.excep import WrongShapeError
 from fieldsim.excep import NotInitializedError
+from fieldsim.excep import ArgumentError
+from fieldsim.excep import FieldNotInitializedError
+from fieldsim.excep import UnexpectedDatatypeError
 from fieldsim.warn import FieldNotInitializedWarning
 from fieldsim.warn import FieldAlreadyInitializedWarning
+from fieldsim.warn import LowLuminosityWarning
 
 
 class Field:
@@ -24,8 +28,12 @@ class Field:
 
         self.shape = shape
         self.__initialized = False
+        self.__ph_noise = False
+        self.__has_gain_map = False
 
+        self.gain_map = None
         self.true_field = None
+        self.ph_noise_field = None
         self.sources = None
 
         self.status = ImageStatus().NOTINIT
@@ -66,6 +74,54 @@ class Field:
         elif self.__initialized and not force:
             warnings.warn("Field already initialized, use `force=True` argument to force re-initialization.",
                           FieldAlreadyInitializedWarning)
+
+    def add_photon_noise(self, fluct='poisson', force=False):
+        if not isinstance(fluct, (str, float, int)):
+            raise TypeError('`fluct` argument must be either a string or a number.')
+        if isinstance(fluct, str) and not fluct in ['poisson']:
+            raise ArgumentError
+        if not isinstance(force, bool):
+            raise TypeError('`force` argument must be a bool.')
+        if not self.__initialized:
+            raise FieldNotInitializedError
+        if self.datatype != DataType().LUMINOSITY:
+            raise UnexpectedDatatypeError
+
+        if self.__ph_noise and not force:
+            warnings.warn("Field already has photon noise, use `force=True` argument to force photon noise again.",
+                          FieldAlreadyInitializedWarning)
+        elif not self.__ph_noise or force:
+            if self.true_field.max() <= 1:
+                warnings.warn("Luminosity is too low to discretize photons. Field is being multiplied by 100.",
+                              LowLuminosityWarning)
+                self.ph_noise_field = 100 * self.true_field
+                self.ph_noise_field = np.round(self.ph_noise_field)
+                self.ph_noise_field = np.where(self.ph_noise_field > 0,
+                                               np.random.poisson(self.ph_noise_field), 0)
+            else:
+                self.ph_noise_field = np.round(self.true_field)
+                self.ph_noise_field = np.where(self.ph_noise_field > 0,
+                                               np.random.poisson(self.ph_noise_field), 0)
+
+            self.ph_noise_field = np.where(self.ph_noise_field < 0,
+                                           0, self.ph_noise_field)
+            self.__ph_noise = True
+
+    def create_gain_map(self, mean_gain=1, rel_var=0.01, force=False):
+        if not isinstance(mean_gain, (int, float)):
+            raise TypeError('`mean_gain` must be a number.')
+        if not isinstance(rel_var, (int, float)):
+            raise TypeError('`rel_var` must be a number.')
+        if not isinstance(force, bool):
+            raise TypeError('`force` argument must be a bool.')
+
+        if self.__has_gain_map and not force:
+            warnings.warn("A gain map already exists")
+        elif not self.__has_gain_map or force:
+            self.gain_map = np.random.normal(mean_gain, rel_var * mean_gain, self.shape)
+
+            self.gain_map = np.where(self.gain_map < 0, 0, self.gain_map)
+            self.__has_gain_map = True
 
     def show_field(self, field='true'):
         if not isinstance(field, str):

@@ -19,8 +19,10 @@ from fieldsim.warn import LowLuminosityWarning
 
 
 class Field:
-    __valid_fields = ['true']
-    __attributes = {'true': 'true_field'}
+    __valid_fields = ['true', 'ph_noise', 'gain_map']
+    __attributes = {'true': 'true_field',
+                    'ph_noise': 'ph_noise_field',
+                    'gain_map': 'gain_map'}
 
     def __init__(self, shape):
         if not isinstance(shape, tuple) or len(shape) != 2:

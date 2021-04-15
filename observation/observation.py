@@ -18,19 +18,29 @@ class Observation:
                     'datatype': 2}
 
     def __init__(self, field, ext='fits'):
-        if isinstance(field, Field):
-            self.image = field.shot
+        self.__field = field
+        self.__ext = ext
 
+        self.status = None
+        self.datatype = None
+
+        self.image = self.__extract_field(field, ext)
+
+    def __extract_field(self, field, ext):
+        if isinstance(field, Field):
             self.status = field.status
             self.datatype = field.datatype
+
+            return field.shot
         elif isinstance(field, (str, Path)):
             if ext == 'fits':
                 hdulist = fits.open(field)
 
                 self.fits = [hdu for hdu in hdulist]
-                self.image = self.fits[1].data
-
+                image = self.fits[1].data
                 hdulist.close()
+
+                return image
             elif ext == 'txt':
                 with open(field, 'r') as imfile:
                     lines = imfile.readlines()
@@ -38,11 +48,16 @@ class Observation:
                     self.status = _status_values[(header_list[self.__lst_header['status']])]
                     self.datatype = _datatype_values[(header_list[self.__lst_header['datatype']])]
 
-                    self.image = np.array([[float(px) for px in line.split()] for line in lines[1:]])
+                    image = np.array([[float(px) for px in line.split()] for line in lines[1:]])
+
+                return image
             else:
                 raise InvalidExtensionError
         else:
             raise IOError("Unknown field passed as argument. Must either be a `Field` object or a path.")
+
+    def update_image(self):
+        self.image = self.__extract_field(self.__field, self.__ext)
 
     def count_single_stars(self):
         if self.status != ImageStatus().SINGLESTARS:

@@ -150,4 +150,7 @@ class Field:
         if self.status == ImageStatus().NOTINIT:
             raise NotInitializedError
         elif self.status == ImageStatus().SINGLESTARS:
-            return self.true_field
+            if self.__ph_noise:
+                return self.ph_noise_field
+            else:
+                return self.true_field

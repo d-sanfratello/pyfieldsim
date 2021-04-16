@@ -90,13 +90,19 @@ class Field:
             warnings.warn("Field already initialized, use `force=True` argument to force re-initialization.",
                           FieldAlreadyInitializedWarning)
 
-    def add_photon_noise(self, fluct='poisson', force=False, multiply=False):
+    def add_photon_noise(self, fluct='poisson', force=False, delta_time=1, multiply=False):
         if not isinstance(fluct, (str, float, int)):
             raise TypeError('`fluct` argument must be either a string or a number.')
         if isinstance(fluct, str) and fluct not in ['poisson']:
             raise ArgumentError
         if not isinstance(force, bool):
             raise TypeError('`force` argument must be a bool.')
+
+        if not isinstance(delta_time, (int, float)):
+            raise TypeError('`delta_time` argument must be a number.')
+        elif delta_time <= 0:
+            raise ValueError('`delta_time` argument must be positive.')
+
         if not isinstance(multiply, bool):
             raise TypeError('`multiply` argument must be a bool.')
         if not self.__initialized:
@@ -111,18 +117,20 @@ class Field:
             self.status = ImageStatus().PH_NOISE
             rng = np.random.default_rng()
 
-            if self.true_field[np.nonzero(self.true_field)].min() <= 1 and multiply:
+            exposed_true_field = self.true_field * delta_time
+
+            if exposed_true_field[np.nonzero(exposed_true_field)].min() <= 1 and multiply:
                 warnings.warn("Field is being multiplied by a constant so that the lowest luminosity star is at least \
                  \nabove 1 before adding photon noise fluctuations.",
                               LowLuminosityWarning)
-                min_luminosity = self.true_field[np.nonzero(self.true_field)].min()
+                min_luminosity = exposed_true_field[np.nonzero(exposed_true_field)].min()
                 min_exponent = - np.floor(np.log10(min_luminosity))
-                self.w_ph_noise_field = self.true_field * 10 ** min_exponent
+                self.w_ph_noise_field = exposed_true_field * 10 ** min_exponent
                 self.w_ph_noise_field = np.round(self.w_ph_noise_field)
                 self.w_ph_noise_field = np.where(self.w_ph_noise_field > 0,
                                                  rng.poisson(self.w_ph_noise_field), 0)
             else:
-                self.w_ph_noise_field = np.round(self.true_field)
+                self.w_ph_noise_field = np.round(exposed_true_field)
                 self.w_ph_noise_field = np.where(self.w_ph_noise_field > 0,
                                                  rng.poisson(self.w_ph_noise_field), 0)
 

@@ -3,10 +3,11 @@ import numpy as np
 
 from fieldsim.field import Field
 from fieldsim.observation import Observation
+from fieldsim.psf.kernels import GaussKernel
 
 if __name__ == "__main__":
     fld = Field((200, 200))
-    fld.initialize_field(density=0.02, cst_lm=100,
+    fld.initialize_field(density=0.02, cst_lm=1000,
                          datatype='luminosity')
 
     fld.show_field(field='true')
@@ -29,7 +30,6 @@ if __name__ == "__main__":
 
     # Adding photon noise to sources.
     fld.add_photon_noise()
-    fld.show_field(field='ph_noise')
     obs.update_image()
 
     stars, coords = obs.count_single_stars()
@@ -45,6 +45,18 @@ if __name__ == "__main__":
 
     # Creating gain map.
     fld.create_gain_map()
+
+    # Adding background.
+    fld.add_background()
+
+    # Convolving with gaussian psf kernel
+    psf = GaussKernel(3, size=2.5)
+    fld.apply_psf(psf)
+
+    # Showing fields
+    fld.show_field(field='ph_noise')
+    fld.show_field(field='background')
+    fld.show_field(field='psf')
     fld.show_field(field='gain_map')
 
     plt.show()

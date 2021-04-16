@@ -71,7 +71,8 @@ class Field:
             warnings.warn("Field already initialized, use `force=True` argument to force re-initialization.",
                           FieldAlreadyInitializedWarning)
         elif not self.__initialized or force:
-            rand_distribution = np.random.random(self.shape)
+            rng = np.random.default_rng()
+            rand_distribution = rng.random(self.shape)
             stars_coords_arr = np.argwhere(rand_distribution <= density)
 
             self.sources = np.array([SkySource(coords).initialize(e_imf, e_lm, cst_lm) for coords in stars_coords_arr])

@@ -15,6 +15,10 @@ class ImageStatus:
     def BACKGROUND(self):
         return 'background'
 
+    @property
+    def PSF(self):
+        return 'psf'
+
 
 class DataType:
     @property

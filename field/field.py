@@ -1,12 +1,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy.signal as scipysig
 import warnings
-
-from scipy.stats import norm
 
 from fieldsim.skysource import SkySource
 from fieldsim.utils import DataType
 from fieldsim.utils import ImageStatus
+
+from fieldsim.psf import Kernel
 
 from fieldsim.excep import WrongShapeError
 from fieldsim.excep import NotInitializedError
@@ -19,10 +20,11 @@ from fieldsim.warn import LowLuminosityWarning
 
 
 class Field:
-    __valid_fields = ['true', 'ph_noise', 'background', 'gain_map']
+    __valid_fields = ['true', 'ph_noise', 'background', 'psf', 'gain_map']
     __attributes = {'true': 'true_field',
-                    'ph_noise': 'ph_noise_field',
-                    'background': 'background_field',
+                    'ph_noise': 'w_ph_noise_field',
+                    'background': 'w_background_field',
+                    'psf': 'w_psf_field',
                     'gain_map': 'gain_map'}
 
     def __init__(self, shape):
@@ -33,13 +35,15 @@ class Field:
         self.__initialized = False
         self.__ph_noise = False
         self.__background = False
+        self.__psf = False
         self.__has_gain_map = False
 
         self.max_signal_coords = None
         self.gain_map = None
         self.true_field = None
-        self.ph_noise_field = None
-        self.background_field = None
+        self.w_ph_noise_field = None
+        self.w_background_field = None
+        self.w_psf_field = None
         self.sources = None
 
         self.status = ImageStatus().NOTINIT
@@ -109,16 +113,16 @@ class Field:
                               LowLuminosityWarning)
                 min_luminosity = self.true_field[np.nonzero(self.true_field)].min()
                 min_exponent = - np.floor(np.log10(min_luminosity))
-                self.ph_noise_field = self.true_field * 10**min_exponent
-                self.ph_noise_field = np.round(self.ph_noise_field)
-                self.ph_noise_field = np.where(self.ph_noise_field > 0,
-                                               rng.poisson(self.ph_noise_field), 0)
+                self.w_ph_noise_field = self.true_field * 10 ** min_exponent
+                self.w_ph_noise_field = np.round(self.w_ph_noise_field)
+                self.w_ph_noise_field = np.where(self.w_ph_noise_field > 0,
+                                                 rng.poisson(self.w_ph_noise_field), 0)
             else:
-                self.ph_noise_field = np.round(self.true_field)
-                self.ph_noise_field = np.where(self.ph_noise_field > 0,
-                                               rng.poisson(self.ph_noise_field), 0)
+                self.w_ph_noise_field = np.round(self.true_field)
+                self.w_ph_noise_field = np.where(self.w_ph_noise_field > 0,
+                                                 rng.poisson(self.w_ph_noise_field), 0)
 
-            self.ph_noise_field = np.where(self.ph_noise_field < 0, 0, self.ph_noise_field)
+            self.w_ph_noise_field = np.where(self.w_ph_noise_field < 0, 0, self.w_ph_noise_field)
             self.__ph_noise = True
 
     def add_background(self, fluct='gauss', snr=10, rel_var=0.05, force=False):
@@ -139,6 +143,7 @@ class Field:
 
         if not isinstance(force, bool):
             raise TypeError('`force` argument must be a bool.')
+
         if not self.__initialized:
             raise FieldNotInitializedError
         if self.datatype != DataType().LUMINOSITY:
@@ -152,18 +157,41 @@ class Field:
             rng = np.random.default_rng()
 
             if self.__ph_noise:
-                loc = self.ph_noise_field[self.max_signal_coords]
+                loc = self.w_ph_noise_field[self.max_signal_coords]
                 scale = rel_var * loc
 
-                self.background_field = self.ph_noise_field + rng.normal(loc, scale, self.shape)
+                self.w_background_field = self.w_ph_noise_field + rng.normal(loc, scale, self.shape)
             else:
                 loc = self.true_field[self.max_signal_coords]
                 scale = rel_var * loc
 
-                self.background_field = self.true_field + rng.normal(loc, scale, self.shape)
+                self.w_background_field = self.true_field + rng.normal(loc, scale, self.shape)
 
-            self.background_field = np.where(self.background_field < 0, 0, self.background_field)
+            self.w_background_field = np.where(self.w_background_field < 0, 0, self.w_background_field)
             self.__background = True
+
+    def apply_psf(self, kernel, force=False):
+        if not isinstance(kernel, Kernel):
+            raise TypeError('`kernel` argument must be an instance of `fieldsim.psf.Kernel` class.')
+
+        if not self.__initialized:
+            raise FieldNotInitializedError
+
+        if self.__psf and not force:
+            warnings.warn("Field has already been convolved with a psf, use `force=True` argument to force psf again.",
+                          FieldAlreadyInitializedWarning)
+        elif not self.__psf or force:
+            self.status = ImageStatus().PSF
+
+            if not self.__ph_noise and not self.__background:
+                self.w_psf_field = scipysig.convolve2d(self.true_field, kernel.kernel, mode='same')
+            elif self.__ph_noise and not self.__background:
+                self.w_psf_field = scipysig.convolve2d(self.w_ph_noise_field, kernel.kernel, mode='same')
+            elif self.__background:
+                self.w_psf_field = scipysig.convolve2d(self.w_background_field, kernel.kernel, mode='same')
+
+            self.w_psf_field = np.where(self.w_psf_field < 0, 0, self.w_psf_field)
+            self.__psf = True
 
     def create_gain_map(self, mean_gain=1, rel_var=0.01, force=False):
         if not isinstance(mean_gain, (int, float)):
@@ -208,6 +236,8 @@ class Field:
         elif self.status == ImageStatus().SINGLESTARS:
             return self.true_field
         elif self.status == ImageStatus().PH_NOISE:
-            return self.ph_noise_field
+            return self.w_ph_noise_field
         elif self.status == ImageStatus().BACKGROUND:
-            return self.background_field
+            return self.w_background_field
+        elif self.status == ImageStatus().PSF:
+            return self.w_psf_field

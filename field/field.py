@@ -20,11 +20,12 @@ from fieldsim.warn import LowLuminosityWarning
 
 
 class Field:
-    __valid_fields = ['true', 'ph_noise', 'background', 'psf', 'gain_map', 'dark_current']
+    __valid_fields = ['true', 'ph_noise', 'background', 'psf', 'exposure', 'gain_map', 'dark_current']
     __attributes = {'true': 'true_field',
                     'ph_noise': 'w_ph_noise_field',
                     'background': 'w_background_field',
                     'psf': 'w_psf_field',
+                    'exposure': 'recorded_field',
                     'gain_map': 'gain_map',
                     'dark_current': 'dark_current'}
 
@@ -39,6 +40,7 @@ class Field:
         self.__psf = False
         self.__has_gain_map = False
         self.__has_dark_current = False
+        self.__has_record = False
 
         self.max_signal_coords = None
         self.gain_map = None
@@ -48,6 +50,7 @@ class Field:
         self.w_ph_noise_field = None
         self.w_background_field = None
         self.w_psf_field = None
+        self.recorded_field = None
         self.sources = None
 
         self.status = ImageStatus().NOTINIT
@@ -64,17 +67,15 @@ class Field:
         elif datatype not in ['luminosity', 'magnitude', 'mass']:
             raise ValueError("`datatype` argument must be \"luminosity\", \"magnitude\" or \"mass\".")
 
-        if not self.__initialized or force:
-            self.__initialized = True
-
+        if self.__initialized and not force:
+            warnings.warn("Field already initialized, use `force=True` argument to force re-initialization.",
+                          FieldAlreadyInitializedWarning)
+        elif not self.__initialized or force:
             rand_distribution = np.random.random(self.shape)
-            stars_coords_array = np.argwhere(rand_distribution <= density)
+            stars_coords_arr = np.argwhere(rand_distribution <= density)
 
-            self.sources = np.array([SkySource(coords).initialize(e_imf, e_lm, cst_lm) for coords in stars_coords_array])
+            self.sources = np.array([SkySource(coords).initialize(e_imf, e_lm, cst_lm) for coords in stars_coords_arr])
             self.true_field = np.zeros(self.shape)
-
-            self.status = ImageStatus().SINGLESTARS
-            self.datatype = getattr(DataType(), datatype.upper())
 
             if self.datatype == DataType().LUMINOSITY:
                 for source in self.sources:
@@ -86,23 +87,24 @@ class Field:
             elif self.datatype == DataType().MASS:
                 for source in self.sources:
                     self.true_field[source.coords[0], source.coords[1]] = source.mass
-        elif self.__initialized and not force:
-            warnings.warn("Field already initialized, use `force=True` argument to force re-initialization.",
-                          FieldAlreadyInitializedWarning)
 
-    def add_photon_noise(self, fluct='poisson', force=False, delta_time=1, multiply=False):
+            self.status = ImageStatus().SINGLESTARS
+            self.datatype = getattr(DataType(), datatype.upper())
+            self.__initialized = True
+
+    def add_photon_noise(self, fluct='poisson', delta_time=1, force=False, multiply=False):
         if not isinstance(fluct, (str, float, int)):
             raise TypeError('`fluct` argument must be either a string or a number.')
         if isinstance(fluct, str) and fluct not in ['poisson']:
             raise ArgumentError
-        if not isinstance(force, bool):
-            raise TypeError('`force` argument must be a bool.')
 
         if not isinstance(delta_time, (int, float)):
             raise TypeError('`delta_time` argument must be a number.')
         elif delta_time <= 0:
             raise ValueError('`delta_time` argument must be positive.')
 
+        if not isinstance(force, bool):
+            raise TypeError('`force` argument must be a bool.')
         if not isinstance(multiply, bool):
             raise TypeError('`multiply` argument must be a bool.')
         if not self.__initialized:
@@ -114,7 +116,6 @@ class Field:
             warnings.warn("Field already has photon noise, use `force=True` argument to force photon noise again.",
                           FieldAlreadyInitializedWarning)
         elif not self.__ph_noise or force:
-            self.status = ImageStatus().PH_NOISE
             rng = np.random.default_rng()
 
             exposed_true_field = self.true_field * delta_time
@@ -135,6 +136,7 @@ class Field:
                                                  rng.poisson(self.w_ph_noise_field), 0)
 
             self.w_ph_noise_field = np.where(self.w_ph_noise_field < 0, 0, self.w_ph_noise_field)
+            self.status = ImageStatus().PH_NOISE
             self.__ph_noise = True
 
     def add_background(self, fluct='gauss', snr=10, rel_var=0.05, force=False):
@@ -165,7 +167,6 @@ class Field:
             warnings.warn("Field already has background, use `force=True` argument to force background again.",
                           FieldAlreadyInitializedWarning)
         elif not self.__background or force:
-            self.status = ImageStatus().BACKGROUND
             rng = np.random.default_rng()
 
             if self.__ph_noise:
@@ -180,6 +181,7 @@ class Field:
                 self.w_background_field = self.true_field + rng.normal(loc, scale, self.shape)
 
             self.w_background_field = np.where(self.w_background_field < 0, 0, self.w_background_field)
+            self.status = ImageStatus().BACKGROUND
             self.__background = True
 
     def apply_psf(self, kernel, force=False):
@@ -193,8 +195,6 @@ class Field:
             warnings.warn("Field has already been convolved with a psf, use `force=True` argument to force psf again.",
                           FieldAlreadyInitializedWarning)
         elif not self.__psf or force:
-            self.status = ImageStatus().PSF
-
             if not self.__ph_noise and not self.__background:
                 self.w_psf_field = scipysig.convolve2d(self.true_field, kernel.kernel, mode='same')
             elif self.__ph_noise and not self.__background:
@@ -203,6 +203,7 @@ class Field:
                 self.w_psf_field = scipysig.convolve2d(self.w_background_field, kernel.kernel, mode='same')
 
             self.w_psf_field = np.where(self.w_psf_field < 0, 0, self.w_psf_field)
+            self.status = ImageStatus().PSF
             self.__psf = True
 
     def create_gain_map(self, mean_gain=1, rel_var=0.01, force=False):
@@ -268,6 +269,32 @@ class Field:
         cbar.ax.set_ylabel(self.datatype.capitalize())
         plt.show()
 
+    def record_field(self, kernel,
+                     delta_time=1, ph_noise_fluct='poisson',
+                     background_fluct='gauss', snr=10, bgnd_rel_var=0.05,
+                     gain_mean=1, gain_rel_var=0.01,
+                     dk_c_fraction=0.1, dk_c_rel_var=0.01, dk_c=1,
+                     force=False):
+        if not isinstance(force, bool):
+            raise TypeError('`force` argument must be a bool.')
+        if self.status == ImageStatus().NOTINIT:
+            raise NotInitializedError
+        elif self.datatype != DataType().LUMINOSITY:
+            raise UnexpectedDatatypeError
+
+        if self.__has_record and not force:
+            warnings.warn("Complete field has been already generated, use `force=True` argument to force new exposure.",
+                          FieldAlreadyInitializedWarning)
+        elif not self.__has_record or force:
+            self.add_photon_noise(fluct=ph_noise_fluct, delta_time=delta_time, force=True, multiply=False)
+            self.add_background(fluct=background_fluct, snr=snr, rel_var=bgnd_rel_var, force=True)
+            self.apply_psf(kernel=kernel, force=True)
+            self.create_gain_map(mean_gain=gain_mean, rel_var=gain_rel_var, force=True)
+            self.create_dark_current(b_fraction=dk_c_fraction, rel_var=dk_c_rel_var, dk_c=dk_c, force=True)
+
+            self.recorded_field = self.gain_map * self.w_psf_field + self.dark_current
+            self.__has_record = True
+
     @property
     def shot(self):
         if self.status == ImageStatus().NOTINIT:
@@ -280,3 +307,5 @@ class Field:
             return self.w_background_field
         elif self.status == ImageStatus().PSF:
             return self.w_psf_field
+        elif self.status == ImageStatus().EXPOSURE:
+            return self.recorded_field

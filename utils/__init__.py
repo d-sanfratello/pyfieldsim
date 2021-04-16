@@ -19,6 +19,10 @@ class ImageStatus:
     def PSF(self):
         return 'psf'
 
+    @property
+    def EXPOSURE(self):
+        return 'exposure'
+
 
 class DataType:
     @property

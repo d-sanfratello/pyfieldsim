@@ -60,3 +60,34 @@ if __name__ == "__main__":
     fld.show_field(field='gain_map')
 
     plt.show()
+
+    # -------------------------------------------------------------------------
+    # Complete operation
+    field = Field((10, 10))
+    field.initialize_field(density=0.20, datatype='luminosity')
+
+    for source in field.sources:
+        print(source.coords)
+
+    observation = Observation(field)
+
+    # counting single stars
+    stars, coords = obs.count_single_stars()
+
+    hist, edges = np.histogram(stars, bins='sqrt')
+    bin_edges = np.logspace(np.log10(edges[0]), np.log10(edges[-1]), len(edges))
+    fig = plt.figure()
+    ax = fig.gca()
+    ax.grid()
+    hist, edges, patch = ax.hist(stars, bins=bin_edges, log=True)
+    ax.set_xscale('log')
+
+    psf = GaussKernel(sigma=3)
+
+    field.record_field(kernel=psf, delta_time=1000,
+                       snr=10, bgnd_rel_var=0.05,
+                       gain_mean=1, gain_rel_var=0.01,
+                       dk_c_fraction=0.1, dk_c_rel_var=0.01, dk_c=1,
+                       force=True)
+
+    field.show_field('exposure')

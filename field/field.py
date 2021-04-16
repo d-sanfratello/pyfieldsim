@@ -78,6 +78,8 @@ class Field:
             self.sources = np.array([SkySource(coords).initialize(e_imf, e_lm, cst_lm) for coords in stars_coords_arr])
             self.true_field = np.zeros(self.shape)
 
+            self.datatype = getattr(DataType(), datatype.upper())
+
             if self.datatype == DataType().LUMINOSITY:
                 for source in self.sources:
                     self.true_field[source.coords[0], source.coords[1]] = source.luminosity
@@ -90,7 +92,6 @@ class Field:
                     self.true_field[source.coords[0], source.coords[1]] = source.mass
 
             self.status = ImageStatus().SINGLESTARS
-            self.datatype = getattr(DataType(), datatype.upper())
             self.__initialized = True
 
     def add_photon_noise(self, fluct='poisson', delta_time=1, force=False, multiply=False):

@@ -7,6 +7,14 @@ class ImageStatus:
     def SINGLESTARS(self):
         return 'single_stars'
 
+    @property
+    def PH_NOISE(self):
+        return 'ph_noise'
+
+    @property
+    def BACKGROUND(self):
+        return 'background'
+
 
 class DataType:
     @property
@@ -27,7 +35,9 @@ class DataType:
 
 
 _NOINIT = -1
-_status_values = {0: ImageStatus().SINGLESTARS}
+_status_values = {0: ImageStatus().SINGLESTARS,
+                  1: ImageStatus().PH_NOISE,
+                  2: ImageStatus().BACKGROUND}
 _datatype_values = {0: DataType().LUMINOSITY,
                     1: DataType().MAGNITUDE,
                     2: DataType().MASS}

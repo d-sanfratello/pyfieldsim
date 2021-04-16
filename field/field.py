@@ -31,11 +31,14 @@ class Field:
         self.shape = shape
         self.__initialized = False
         self.__ph_noise = False
+        self.__background = False
         self.__has_gain_map = False
 
+        self.max_signal_coords = None
         self.gain_map = None
         self.true_field = None
         self.ph_noise_field = None
+        self.background_field = None
         self.sources = None
 
         self.status = ImageStatus().NOTINIT
@@ -67,6 +70,7 @@ class Field:
             if self.datatype == DataType().LUMINOSITY:
                 for source in self.sources:
                     self.true_field[source.coords[0], source.coords[1]] = source.luminosity
+                self.max_signal_coords = np.unravel_index(np.argmax(self.true_field), self.shape)
             elif self.datatype == DataType().MAGNITUDE:
                 for source in self.sources:
                     self.true_field[source.coords[0], source.coords[1]] = source.magnitude
@@ -77,13 +81,15 @@ class Field:
             warnings.warn("Field already initialized, use `force=True` argument to force re-initialization.",
                           FieldAlreadyInitializedWarning)
 
-    def add_photon_noise(self, fluct='poisson', force=False):
+    def add_photon_noise(self, fluct='poisson', force=False, multiply=True):
         if not isinstance(fluct, (str, float, int)):
             raise TypeError('`fluct` argument must be either a string or a number.')
-        if isinstance(fluct, str) and not fluct in ['poisson']:
+        if isinstance(fluct, str) and fluct not in ['poisson']:
             raise ArgumentError
         if not isinstance(force, bool):
             raise TypeError('`force` argument must be a bool.')
+        if not isinstance(multiply, bool):
+            raise TypeError('`multiply` argument must be a bool.')
         if not self.__initialized:
             raise FieldNotInitializedError
         if self.datatype != DataType().LUMINOSITY:
@@ -93,21 +99,68 @@ class Field:
             warnings.warn("Field already has photon noise, use `force=True` argument to force photon noise again.",
                           FieldAlreadyInitializedWarning)
         elif not self.__ph_noise or force:
-            if self.true_field.max() <= 1:
-                warnings.warn("Luminosity is too low to discretize photons. Field is being multiplied by 100.",
+            self.status = ImageStatus().PH_NOISE
+
+            if self.true_field[np.nonzero(self.true_field)].min() <= 1 and multiply:
+                warnings.warn("Field is being multiplied by a constant so that the lowest luminosity star is at least \
+                 \nabove 1 before adding photon noise fluctuations.",
                               LowLuminosityWarning)
-                self.ph_noise_field = 100 * self.true_field
+                min_luminosity = self.true_field[np.nonzero(self.true_field)].min()
+                min_exponent = - np.floor(np.log10(min_luminosity))
+                self.ph_noise_field = self.true_field * 10**min_exponent
                 self.ph_noise_field = np.round(self.ph_noise_field)
                 self.ph_noise_field = np.where(self.ph_noise_field > 0,
-                                               np.random.poisson(self.ph_noise_field), 0)
+                                               np.random.Generator.poisson(self.ph_noise_field), 0)
             else:
                 self.ph_noise_field = np.round(self.true_field)
                 self.ph_noise_field = np.where(self.ph_noise_field > 0,
-                                               np.random.poisson(self.ph_noise_field), 0)
+                                               np.random.Generator.poisson(self.ph_noise_field), 0)
 
             self.ph_noise_field = np.where(self.ph_noise_field < 0,
                                            0, self.ph_noise_field)
             self.__ph_noise = True
+
+    def add_background(self, fluct='gauss', snr=10, rel_var=0.05, force=False):
+        if not isinstance(fluct, (str, float, int)):
+            raise TypeError('`fluct` argument must be either a string or a number.')
+        if isinstance(fluct, str) and fluct not in ['gauss']:
+            raise ArgumentError
+
+        if not isinstance(snr, (int, float)):
+            raise TypeError('`snr` argument must be a number.')
+        elif snr <= 0:
+            raise ValueError('`snr` argument must be positive.')
+
+        if not isinstance(rel_var, (int, float)):
+            raise TypeError('`rel_var` argument must be a number.')
+        elif rel_var < 0 or rel_var > 1:
+            raise ValueError('`snr` argument must be positive.')
+
+        if not isinstance(force, bool):
+            raise TypeError('`force` argument must be a bool.')
+        if not self.__initialized:
+            raise FieldNotInitializedError
+        if self.datatype != DataType().LUMINOSITY:
+            raise UnexpectedDatatypeError
+
+        if self.__background and not force:
+            warnings.warn("Field already has background, use `force=True` argument to force background again.",
+                          FieldAlreadyInitializedWarning)
+        elif not self.__background or force:
+            self.status = ImageStatus().BACKGROUND
+
+            if self.__ph_noise:
+                loc = self.ph_noise_field[self.max_signal_coords]
+                scale = rel_var * loc
+
+                self.background_field = self.ph_noise_field + np.random.Generator.normal(loc, scale, self.shape)
+            else:
+                loc = self.true_field[self.max_signal_coords]
+                scale = rel_var * loc
+
+                self.background_field = self.true_field + np.random.Generator.normal(loc, scale, self.shape)
+
+            self.__background = True
 
     def create_gain_map(self, mean_gain=1, rel_var=0.01, force=False):
         if not isinstance(mean_gain, (int, float)):
@@ -150,7 +203,8 @@ class Field:
         if self.status == ImageStatus().NOTINIT:
             raise NotInitializedError
         elif self.status == ImageStatus().SINGLESTARS:
-            if self.__ph_noise:
-                return self.ph_noise_field
-            else:
-                return self.true_field
+            return self.true_field
+        elif self.status == ImageStatus().PH_NOISE:
+            return self.ph_noise_field
+        elif self.status == ImageStatus().BACKGROUND:
+            return self.background_field

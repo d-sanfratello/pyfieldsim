@@ -116,8 +116,7 @@ class Field:
                 self.ph_noise_field = np.where(self.ph_noise_field > 0,
                                                np.random.Generator.poisson(self.ph_noise_field), 0)
 
-            self.ph_noise_field = np.where(self.ph_noise_field < 0,
-                                           0, self.ph_noise_field)
+            self.ph_noise_field = np.where(self.ph_noise_field < 0, 0, self.ph_noise_field)
             self.__ph_noise = True
 
     def add_background(self, fluct='gauss', snr=10, rel_var=0.05, force=False):
@@ -160,6 +159,7 @@ class Field:
 
                 self.background_field = self.true_field + np.random.Generator.normal(loc, scale, self.shape)
 
+            self.background_field = np.where(self.background_field < 0, 0, self.background_field)
             self.__background = True
 
     def create_gain_map(self, mean_gain=1, rel_var=0.01, force=False):

@@ -60,7 +60,7 @@ class Observation:
         self.image = self.__extract_field(self.__field, self.__ext)
 
     def count_single_stars(self):
-        if self.status != ImageStatus().SINGLESTARS:
+        if self.status not in [ImageStatus().SINGLESTARS, ImageStatus().PH_NOISE]:
             raise IncompatibleStatusError
 
         image_copy = self.image.copy()

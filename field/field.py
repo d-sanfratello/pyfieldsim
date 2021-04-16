@@ -19,9 +19,10 @@ from fieldsim.warn import LowLuminosityWarning
 
 
 class Field:
-    __valid_fields = ['true', 'ph_noise', 'gain_map']
+    __valid_fields = ['true', 'ph_noise', 'background', 'gain_map']
     __attributes = {'true': 'true_field',
                     'ph_noise': 'ph_noise_field',
+                    'background': 'background_field',
                     'gain_map': 'gain_map'}
 
     def __init__(self, shape):
@@ -81,7 +82,7 @@ class Field:
             warnings.warn("Field already initialized, use `force=True` argument to force re-initialization.",
                           FieldAlreadyInitializedWarning)
 
-    def add_photon_noise(self, fluct='poisson', force=False, multiply=True):
+    def add_photon_noise(self, fluct='poisson', force=False, multiply=False):
         if not isinstance(fluct, (str, float, int)):
             raise TypeError('`fluct` argument must be either a string or a number.')
         if isinstance(fluct, str) and fluct not in ['poisson']:
@@ -100,6 +101,7 @@ class Field:
                           FieldAlreadyInitializedWarning)
         elif not self.__ph_noise or force:
             self.status = ImageStatus().PH_NOISE
+            rng = np.random.default_rng()
 
             if self.true_field[np.nonzero(self.true_field)].min() <= 1 and multiply:
                 warnings.warn("Field is being multiplied by a constant so that the lowest luminosity star is at least \
@@ -110,11 +112,11 @@ class Field:
                 self.ph_noise_field = self.true_field * 10**min_exponent
                 self.ph_noise_field = np.round(self.ph_noise_field)
                 self.ph_noise_field = np.where(self.ph_noise_field > 0,
-                                               np.random.Generator.poisson(self.ph_noise_field), 0)
+                                               rng.poisson(self.ph_noise_field), 0)
             else:
                 self.ph_noise_field = np.round(self.true_field)
                 self.ph_noise_field = np.where(self.ph_noise_field > 0,
-                                               np.random.Generator.poisson(self.ph_noise_field), 0)
+                                               rng.poisson(self.ph_noise_field), 0)
 
             self.ph_noise_field = np.where(self.ph_noise_field < 0, 0, self.ph_noise_field)
             self.__ph_noise = True
@@ -147,17 +149,18 @@ class Field:
                           FieldAlreadyInitializedWarning)
         elif not self.__background or force:
             self.status = ImageStatus().BACKGROUND
+            rng = np.random.default_rng()
 
             if self.__ph_noise:
                 loc = self.ph_noise_field[self.max_signal_coords]
                 scale = rel_var * loc
 
-                self.background_field = self.ph_noise_field + np.random.Generator.normal(loc, scale, self.shape)
+                self.background_field = self.ph_noise_field + rng.normal(loc, scale, self.shape)
             else:
                 loc = self.true_field[self.max_signal_coords]
                 scale = rel_var * loc
 
-                self.background_field = self.true_field + np.random.Generator.normal(loc, scale, self.shape)
+                self.background_field = self.true_field + rng.normal(loc, scale, self.shape)
 
             self.background_field = np.where(self.background_field < 0, 0, self.background_field)
             self.__background = True

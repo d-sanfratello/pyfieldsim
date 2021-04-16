@@ -14,7 +14,7 @@ class SkySource:
             if len(coords) != 2:
                 raise WrongCoordsLengthError
 
-        self.coords = coords
+        self.coords = np.array(coords)
 
         self.__m_min = m_min
         self.__m_max = m_max

@@ -20,12 +20,13 @@ from fieldsim.warn import LowLuminosityWarning
 
 
 class Field:
-    __valid_fields = ['true', 'ph_noise', 'background', 'psf', 'gain_map']
+    __valid_fields = ['true', 'ph_noise', 'background', 'psf', 'gain_map', 'dark_current']
     __attributes = {'true': 'true_field',
                     'ph_noise': 'w_ph_noise_field',
                     'background': 'w_background_field',
                     'psf': 'w_psf_field',
-                    'gain_map': 'gain_map'}
+                    'gain_map': 'gain_map',
+                    'dark_current': 'dark_current'}
 
     def __init__(self, shape):
         if not isinstance(shape, tuple) or len(shape) != 2:
@@ -37,9 +38,12 @@ class Field:
         self.__background = False
         self.__psf = False
         self.__has_gain_map = False
+        self.__has_dark_current = False
 
         self.max_signal_coords = None
         self.gain_map = None
+        self.__mean_gain = None
+        self.dark_current = None
         self.true_field = None
         self.w_ph_noise_field = None
         self.w_background_field = None
@@ -202,12 +206,39 @@ class Field:
             raise TypeError('`force` argument must be a bool.')
 
         if self.__has_gain_map and not force:
-            warnings.warn("A gain map already exists")
+            warnings.warn("A gain map already exists, use `force=True` argument to force gain map generation again.",
+                          FieldAlreadyInitializedWarning)
         elif not self.__has_gain_map or force:
-            self.gain_map = np.random.normal(mean_gain, rel_var * mean_gain, self.shape)
+            rng = np.random.default_rng()
+            self.gain_map = rng.normal(mean_gain, rel_var * mean_gain, self.shape)
 
             self.gain_map = np.where(self.gain_map < 0, 0, self.gain_map)
+            self.__mean_gain = mean_gain
             self.__has_gain_map = True
+
+    def create_dark_current(self, b_fraction=0.1, rel_var=0.01, dk_c=1, force=False):
+        if not isinstance(b_fraction, (int, float)):
+            raise TypeError('`b_fraction` must be a number.')
+        if not isinstance(rel_var, (int, float)):
+            raise TypeError('`rel_var` must be a number.')
+        if not isinstance(dk_c, (int, float)):
+            raise TypeError('`dk_c` must be a number.')
+        if not isinstance(force, bool):
+            raise TypeError('`force` argument must be a bool.')
+
+        if self.__has_dark_current and not force:
+            warnings.warn("Dark current has already been generated, use `force=True` argument to force dark current \
+             \ngeneration again.", FieldAlreadyInitializedWarning)
+        elif not self.__has_dark_current or force:
+            rng = np.random.default_rng()
+
+            if self.__background:
+                dark_current_mean = b_fraction * self.__mean_gain
+            else:
+                dark_current_mean = dk_c
+
+            self.dark_current = rng.normal(dark_current_mean, rel_var * dark_current_mean, self.shape)
+            self.__has_dark_current = True
 
     def show_field(self, field='true'):
         if not isinstance(field, str):

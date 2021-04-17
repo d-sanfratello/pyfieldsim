@@ -33,11 +33,6 @@ class ArgumentError(Exception):
         return "Method received unexpected agument. See `help()` for more information."
 
 
-class FieldNotInitializedError(Exception):
-    def __str__(self):
-        return "Field must be initialized to perform this operation."
-
-
 class UnexpectedDatatypeError(Exception):
     def __str__(self):
         return "Unexpected `DataType` to perform this operation."

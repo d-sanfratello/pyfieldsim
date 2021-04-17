@@ -6,7 +6,9 @@ from path import Path
 from fieldsim.field import Field
 from fieldsim.utils import ImageStatus
 from fieldsim.utils import DataType
+# noinspection PyProtectedMember
 from fieldsim.utils import _status_values
+# noinspection PyProtectedMember
 from fieldsim.utils import _datatype_values
 
 from fieldsim.excep import InvalidExtensionError

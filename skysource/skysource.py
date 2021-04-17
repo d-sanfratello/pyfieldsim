@@ -22,6 +22,13 @@ class SkySource:
         m_max: `number`
             Highest limit of mass for the IMF. Default is 350.
 
+        Raises
+        ------
+        `WrongCoordsFormatError`:
+            If `coords` is not an iterable object.
+        `WrongCoordsLengthError`:
+            If `coords` is not an iterable of length 2.
+
         Examples
         --------
         >>> # Generates a source in field location (2,5), whose mass is to be defined whitin 1 and 100
@@ -115,6 +122,11 @@ class SkySource:
         Mass: `number`
             Returns the mass of the star.
 
+        Raises
+        ------
+        `ValueError`:
+            If `cimf` is not in the iterval [0, 1] or if `e` is less or equal to 1.
+
         Examples
         --------
         >>> # Mass of a star following an IMF defined by the powerlaw M^-2.4, in case the random variable is 0.3, for
@@ -164,6 +176,13 @@ class SkySource:
         Luminosity: `number`
             Returns the luminosity of the star.
 
+        Raises
+        ------
+        `ValueError`:
+            If `e` is less or equal to 0 or if `cst` is less or equal to 0.
+        `AttributeError`:
+            If instance's mass has not been generated, yet.
+
         Examples
         --------
         >>> # Luminosity of a star of mass 2.5 arb. mass. units, for a relation L = M^3.
@@ -192,6 +211,11 @@ class SkySource:
         -------
         Magnitude-like: `number`
             Returns a magnitude-like quantity for the star.
+
+        Raises
+        ------
+        `AttributeError`:
+            If instance's luminosity has not been determined, yet.
 
         Examples
         --------

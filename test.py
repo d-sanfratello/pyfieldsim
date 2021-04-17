@@ -66,9 +66,6 @@ if __name__ == "__main__":
     field = Field((10, 10))
     field.initialize_field(density=0.20, datatype='luminosity')
 
-    for source in field.sources:
-        print(source.coords)
-
     field.show_field('true')
 
     observation = Observation(field)

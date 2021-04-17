@@ -14,7 +14,6 @@ from fieldsim.excep import NotInitializedError
 from fieldsim.excep import ArgumentError
 from fieldsim.excep import FieldNotInitializedError
 from fieldsim.excep import UnexpectedDatatypeError
-from fieldsim.warn import FieldNotInitializedWarning
 from fieldsim.warn import FieldAlreadyInitializedWarning
 from fieldsim.warn import LowLuminosityWarning
 
@@ -83,7 +82,6 @@ class Field:
             work_shape = (self.shape[0] + 2 * self.__pad[0], self.shape[1] + 2 * self.__pad[1])
             self.__work_field = np.zeros(work_shape)
 
-            # rand_distribution = rng.random(self.shape)
             rand_distribution = rng.random(self.__work_field.shape)
             stars_coords_arr = np.argwhere(rand_distribution <= density)
 
@@ -94,15 +92,12 @@ class Field:
 
             if self.datatype == DataType().LUMINOSITY:
                 for source in self.sources:
-                    # self.true_field[source.coords[0], source.coords[1]] = source.luminosity
                     self.__work_field[source.coords[0], source.coords[1]] = source.luminosity
             elif self.datatype == DataType().MAGNITUDE:
                 for source in self.sources:
-                    # self.true_field[source.coords[0], source.coords[1]] = source.magnitude
                     self.__work_field[source.coords[0], source.coords[1]] = source.magnitude
             elif self.datatype == DataType().MASS:
                 for source in self.sources:
-                    # self.true_field[source.coords[0], source.coords[1]] = source.mass
                     self.__work_field[source.coords[0], source.coords[1]] = source.mass
             self.true_field = self.__work_field[self.__pad[0]:-self.__pad[0], self.__pad[1]:-self.__pad[1]]
             self.max_signal_coords = np.unravel_index(np.argmax(self.true_field), self.shape)
@@ -156,21 +151,14 @@ class Field:
                               LowLuminosityWarning)
                 min_luminosity = exposed_true_field[np.nonzero(exposed_true_field)].min()
                 min_exponent = - np.floor(np.log10(min_luminosity))
-                # self.w_ph_noise_field = exposed_true_field * 10 ** min_exponent
-                # self.w_ph_noise_field = np.round(self.w_ph_noise_field)
-                # self.w_ph_noise_field = np.where(self.w_ph_noise_field > 0,
-                #                                  rng.poisson(self.w_ph_noise_field), 0)
+
                 self.__work_w_ph_noise = exposed_true_field * 10 ** min_exponent
                 self.__work_w_ph_noise = np.round(self.__work_w_ph_noise)
                 self.__work_w_ph_noise = np.where(self.__work_w_ph_noise > 0, rng.poisson(self.__work_w_ph_noise), 0)
             else:
-                # self.w_ph_noise_field = np.round(exposed_true_field)
-                # self.w_ph_noise_field = np.where(self.w_ph_noise_field > 0,
-                #                                  rng.poisson(self.w_ph_noise_field), 0)
                 self.__work_w_ph_noise = np.round(exposed_true_field)
                 self.__work_w_ph_noise = np.where(self.__work_w_ph_noise > 0, rng.poisson(self.__work_w_ph_noise), 0)
 
-            # self.w_ph_noise_field = np.where(self.w_ph_noise_field < 0, 0, self.w_ph_noise_field)
             self.__work_w_ph_noise = np.where(self.__work_w_ph_noise < 0, 0, self.__work_w_ph_noise)
 
             self.w_ph_noise_field = self.__work_w_ph_noise[self.__pad[0]:-self.__pad[0], self.__pad[1]:-self.__pad[1]]
@@ -213,16 +201,13 @@ class Field:
                 loc = self.w_ph_noise_field[self.max_signal_coords]
                 scale = rel_var * loc
 
-                # self.w_background_field = self.w_ph_noise_field + rng.normal(loc, scale, self.shape)
                 self.__work_w_background = self.__work_w_ph_noise + rng.normal(loc, scale, self.__work_w_ph_noise.shape)
             else:
                 loc = self.true_field[self.max_signal_coords]
                 scale = rel_var * loc
 
-                # self.w_background_field = self.true_field + rng.normal(loc, scale, self.shape)
                 self.__work_w_background = self.__work_field + rng.normal(loc, scale, self.__work_field.shape)
 
-            # self.w_background_field = np.where(self.w_background_field < 0, 0, self.w_background_field)
             self.__work_w_background = np.where(self.__work_w_background < 0, 0, self.__work_w_background)
 
             self.w_background_field = self.__work_w_background[self.__pad[0]:-self.__pad[0],
@@ -244,16 +229,12 @@ class Field:
             self.__work_w_psf = np.zeros(self.__work_field.shape)
 
             if not self.__ph_noise and not self.__background:
-                # self.w_psf_field = scipysig.convolve2d(self.true_field, kernel.kernel, mode='same')
                 self.__work_w_psf = scipysig.convolve2d(self.__work_field, kernel.kernel, mode='same')
             elif self.__ph_noise and not self.__background:
-                # self.w_psf_field = scipysig.convolve2d(self.w_ph_noise_field, kernel.kernel, mode='same')
                 self.__work_w_psf = scipysig.convolve2d(self.__work_w_ph_noise, kernel.kernel, mode='same')
             elif self.__background:
-                # self.w_psf_field = scipysig.convolve2d(self.w_background_field, kernel.kernel, mode='same')
                 self.__work_w_psf = scipysig.convolve2d(self.__work_w_background, kernel.kernel, mode='same')
 
-            # self.w_psf_field = np.where(self.w_psf_field < 0, 0, self.w_psf_field)
             self.__work_w_psf = np.where(self.__work_w_psf < 0, 0, self.__work_w_psf)
 
             self.w_psf_field = self.__work_w_psf[self.__pad[0]:-self.__pad[0], self.__pad[1]:-self.__pad[1]]

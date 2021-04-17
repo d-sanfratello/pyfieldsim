@@ -69,6 +69,8 @@ if __name__ == "__main__":
     for source in field.sources:
         print(source.coords)
 
+    field.show_field('true')
+
     observation = Observation(field)
 
     # counting single stars

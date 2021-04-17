@@ -107,12 +107,12 @@ class Field:
             self.true_field = self.__work_field[self.__pad[0]:-self.__pad[0], self.__pad[1]:-self.__pad[1]]
             self.max_signal_coords = np.unravel_index(np.argmax(self.true_field), self.shape)
 
-            src_copy = np.array([sources for sources in self.sources if
-                                 (self.__pad[0] <= sources.coords[0] < self.shape[0] - self.__pad[0] and
-                                  self.__pad[1] <= sources.coords[1] < self.shape[1] - self.__pad[1])])
-            for source in src_copy:
+            for source in self.sources:
                 source.coords[0] -= self.__pad[0]
                 source.coords[1] -= self.__pad[1]
+
+            src_copy = filter(lambda x: (0 <= x.coords[0] < self.shape[0] and 0 <= x.coords[1] < self.shape[1]),
+                              self.sources)
 
             self.sources = src_copy
 

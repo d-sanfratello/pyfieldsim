@@ -296,7 +296,7 @@ class Field:
         ax1 = fig.gca()
         ax1.grid()
 
-        im = ax1.imshow(image, origin='lower', cmap='binary')
+        im = ax1.imshow(image.T, origin='lower', cmap='binary')
         ax1.set_xlabel('RA')
         ax1.set_ylabel('DEC')
 

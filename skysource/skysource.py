@@ -158,7 +158,7 @@ class SkySource:
 
     def lm_relation(self, e=3, cst=1):
         """
-        Method to determine the luminosity of a star of given its mass and a powerlaw L-M relation.
+        Method to determine the luminosity of a star given its mass and a powerlaw L-M relation.
 
         It calculates the luminosity of the star from a relation given by:
 
@@ -201,7 +201,7 @@ class SkySource:
 
     def l2mag(self):
         """
-        Method to determine a magnitude-like quantity of a star of given its luminosity..
+        Method to determine a magnitude-like quantity of a star given its luminosity.
 
         It calculates a magnitude-like quantity with the following relation:
 

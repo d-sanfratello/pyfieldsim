@@ -20,6 +20,32 @@ class Observation:
                     'datatype': 2}
 
     def __init__(self, field, ext='fits'):
+        """
+        Class that initializates an `Observation` instance, to simulate an exposure through a telescope and its
+        following analysis.
+
+        At initialization the class takes a `field` argument, either a `field.Field` object, a string to the path or
+        a `Path` object and, in the last two cases, a extension `ext` being either `"fits"` or `"text"`. If `field`
+        is a `Field` object, argument `ext` is ignored.
+
+        Parameters
+        ----------
+        field: `field.Field`, string or `path.Path`
+            Either a `Field` type object or the path to a .fits file or .txt file.
+        ext: string either `"fits"` or `"txt"`
+            If `field` is a path, the extension of the file to open. Default is `"fits"`.
+
+        Raises
+        ------
+        `InvalidExtensionError`:
+            If `ext` is not a known extension (`"txt"` or `"fits"`).
+        `IOError`:
+            If `field` is not a valid argument.
+
+        See Also
+        --------
+        `field.Field.shot`.
+        """
         self.__field = field
         self.__ext = ext
 
@@ -29,6 +55,16 @@ class Observation:
         self.image = self.__extract_field(field, ext)
 
     def __extract_field(self, field, ext):
+        """
+        Method that called at `observation.Observation` initialization and whenever the saved image needs to be
+        updated. This method extracts an exposure from `field` for a set type of data file defined in `ext`.
+
+        Returns
+        -------
+        shot: `numpy.ndarray`
+            Returns the property `shot` of an instance of `field.Field`, if `field` is such instance, or the matrix
+            representing the exposure as extracted from the .txt or the .fits file.
+        """
         if isinstance(field, Field):
             self.status = field.status
             self.datatype = field.datatype
@@ -59,9 +95,51 @@ class Observation:
             raise IOError("Unknown field passed as argument. Must either be a `Field` object or a path.")
 
     def update_image(self):
+        """
+        Method to update the image stored inside an `Observation` instance.
+
+        In the case of an image generated from a `field.Field` object, any step in the simulation updates the
+        `Field.shot` property. This method allows for the stored image to be update accordingly.
+
+        Notice that this method works even if the image is extracted from a file, but it won't change the stored
+        image unless the file was actually different, since it would simply re-read its content.
+
+        See Also
+        --------
+        `field.Field.shot`.
+        """
         self.image = self.__extract_field(self.__field, self.__ext)
 
     def count_single_stars(self):
+        """
+        Method that counts the stars in a given field, if the `ImageStatus` of the image is `SINGLESTARS` or `PH_NOISE`.
+
+        Since any other step in the simulation adds background or spreads the values over different pixels,
+        usage of this method is forbidden in those cases.
+
+        This method stores a copy of the image extracted at initialization and finds the highest value (if
+        `field.Field.datatype` is `LUMINOSITY` or `MASS`) or the lowest (if `MAGNITUDE`). It also stores its
+        coordinates. So the pixel of the image copy at those coordinates is set to zero. This process is, then,
+        reiterated until the field is filled with zeros and the values and the corrisponding coordinates are returned.
+
+        Returns
+        -------
+        recorded_stars: `numpy.ndarray`
+            Returns the array of measured values for the stars in the field. Those values are in the unit defined by
+            the field datatype. See also `utils.DataType`.
+        recorded_coords: `numpy.ndarray` of numpy arrays of length 2.
+            Returns, for each value returned in `recorded_stars`, the coordinates at which that values has been found.
+
+        Raises
+        ------
+        `IncompatibleStatusError`:
+            If `field.Field.status` is not `SINGLESTARS` or `PH_NOISE`. As explained, this procedure wouldn't
+            make sense with other steps of the simulation.
+
+        See Also
+        --------
+        `field.Field`, `utils.DataType` and `utils.ImageStatus`.
+        """
         if self.status not in [ImageStatus().SINGLESTARS, ImageStatus().PH_NOISE]:
             raise IncompatibleStatusError
 

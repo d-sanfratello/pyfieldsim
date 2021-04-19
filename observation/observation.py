@@ -72,6 +72,7 @@ class Observation:
             return field.shot
         elif isinstance(field, (str, Path)):
             if ext == 'fits':
+                # Still has to be corrected for status and datatype.
                 hdulist = fits.open(field)
 
                 self.fits = [hdu for hdu in hdulist]
@@ -148,6 +149,8 @@ class Observation:
         recorded_coords = []
 
         if self.datatype == DataType().MAGNITUDE:
+            # In this implementation, the magnitude-like quantity cannot be greater than 0. So it is natural to look
+            # for the minima.
             image_brighter = image_copy.min()
             while image_brighter < 0:
                 coords = np.argmin(image_copy)
@@ -156,6 +159,7 @@ class Observation:
                 recorded_stars.append(image_copy[coords])
                 recorded_coords.append(coords)
 
+                # Once the limit value has been found and stored, the corresponding pixel on the CCD is set to 0.
                 image_copy[coords] = 0
                 image_brighter = image_copy.min()
         elif self.datatype == DataType().LUMINOSITY or self.datatype == DataType().MASS:
@@ -167,6 +171,7 @@ class Observation:
                 recorded_stars.append(image_copy[coords])
                 recorded_coords.append(coords)
 
+                # once the limit value has been found and stored, the corresponding pixel on the CCD is set to 0.
                 image_copy[coords] = 0
                 image_brighter = image_copy.max()
 

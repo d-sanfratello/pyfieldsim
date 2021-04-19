@@ -73,12 +73,12 @@ class Field:
         self.recorded_field = None
         self.sources = None
 
-        self.__work_field = None
+        self.__aux_field = None
         self.__pad = [self.shape[0] // 4, self.shape[1] // 4]
 
-        self.__work_w_ph_noise = None
-        self.__work_w_background = None
-        self.__work_w_psf = None
+        self.__aux_w_ph_noise = None
+        self.__aux_w_background = None
+        self.__aux_w_psf = None
 
         self.status = ImageStatus().NOTINIT
         self.datatype = DataType().NOTINIT
@@ -89,17 +89,17 @@ class Field:
         Method that initializates the field randomly generating the stars in it as instances of the
         `skysource.SkySource` class.
 
-        It defines a working field `Field.__work_field` whose shape is the shape defined at initialization with a
+        It defines an auxiliary field `Field.__aux_field` whose shape is the shape defined at initialization with a
         padding added. This will be useful at later stages of simulations, where the convolution with the psf kernel
         would generate boundary artifacts. In this implementation, though, the artifacts are far from the actual
-        boundary of the image, which is realized by cropping the working field at its center. The size of the padding
+        boundary of the image, which is realized by cropping the auxiliary field at its center. The size of the padding
         is, in each direction, equal to 1/4 of the corresponding edge's shape.
 
-        After initializing the random number generator from numpy, the working field is initialized with random
+        After initializing the random number generator from numpy, the auxiliary field is initialized with random
         numbers in the interval [0, 1). If the generated number in a given pixel is below a threshold given by
         `density`, a star is initialized at those coordinates, by using the `skysource.SkySource` class.
 
-        The working field is, then, cropped to obtain the actual field on the CCD. Also, in the `Field.sources`
+        The auxiliary field is, then, cropped to obtain the actual field on the CCD. Also, in the `Field.sources`
         attribute the stars belonging to the padding area are deleted. This is to simulate their existence (and
         effect on the field when psf are taken into account) but without being able to measure their distance from
         the exposed field.
@@ -160,12 +160,15 @@ class Field:
         elif not self.__initialized or force:
             rng = np.random.default_rng()
 
-            work_shape = (self.shape[0] + 2 * self.__pad[0], self.shape[1] + 2 * self.__pad[1])
-            self.__work_field = np.zeros(work_shape)
+            # Generation of the auxiliary field
+            aux_shape = (self.shape[0] + 2 * self.__pad[0], self.shape[1] + 2 * self.__pad[1])
+            self.__aux_field = np.zeros(aux_shape)
 
-            rand_distribution = rng.random(self.__work_field.shape)
+            # Random generation of the stars
+            rand_distribution = rng.random(self.__aux_field.shape)
             stars_coords_arr = np.argwhere(rand_distribution <= density)
 
+            # Saving the sources and randomly generating their masses
             self.sources = np.array([SkySource(coords).initialize(e_imf, e_lm, cst_lm) for coords in stars_coords_arr])
             self.true_field = np.zeros(self.shape)
 
@@ -173,16 +176,20 @@ class Field:
 
             if self.datatype == DataType().LUMINOSITY:
                 for source in self.sources:
-                    self.__work_field[source.coords[0], source.coords[1]] = source.luminosity
+                    self.__aux_field[source.coords[0], source.coords[1]] = source.luminosity
             elif self.datatype == DataType().MAGNITUDE:
                 for source in self.sources:
-                    self.__work_field[source.coords[0], source.coords[1]] = source.magnitude
+                    self.__aux_field[source.coords[0], source.coords[1]] = source.magnitude
             elif self.datatype == DataType().MASS:
                 for source in self.sources:
-                    self.__work_field[source.coords[0], source.coords[1]] = source.mass
-            self.true_field = self.__work_field[self.__pad[0]:-self.__pad[0], self.__pad[1]:-self.__pad[1]]
+                    self.__aux_field[source.coords[0], source.coords[1]] = source.mass
+
+            # Cropping of the auxiliary field, to obtain the CCD image
+            self.true_field = self.__aux_field[self.__pad[0]:-self.__pad[0], self.__pad[1]:-self.__pad[1]]
+            # Max signal in the cropped field is saved, to use it at background generation with the SNR
             self.max_signal_coords = np.unravel_index(np.argmax(self.true_field), self.shape)
 
+            # Deleting the sources outside the CCD image from the list
             for source in self.sources:
                 source.coords[0] -= self.__pad[0]
                 source.coords[1] -= self.__pad[1]
@@ -199,11 +206,11 @@ class Field:
         """
         Method that applies photon fluctuations to the luminosity of stars in the field.
 
-        The working field from the initialization is multiplied by `delta_time`, used to simulate longer (or shorter)
-        exposures this is used to create another working field for the photon noise. These values are used,
+        The auxiliary field from the initialization is multiplied by `delta_time`, used to simulate longer (or shorter)
+        exposures this is used to create another auxiliary field for the photon noise. These values are used,
         rounded to the closer integer, as the mean values of a random poisson number generator.
 
-        Any negative number is, then, set to zero and the working field is cropped again and saved in the
+        Any negative number is, then, set to zero and the auxiliary field is cropped again and saved in the
         `w_ph_noise_field` attribute.
 
         Parameters
@@ -255,27 +262,33 @@ class Field:
         elif not self.__ph_noise or force:
             rng = np.random.default_rng()
 
-            exposed_true_field = self.__work_field * delta_time
-
-            self.__work_w_ph_noise = np.zeros(self.__work_field.shape)
+            # Generating the auxiliary fields and simulating exposure time variation with `delta_time`
+            exposed_true_field = self.__aux_field * delta_time
+            self.__aux_w_ph_noise = np.zeros(self.__aux_field.shape)
 
             if exposed_true_field[np.nonzero(exposed_true_field)].min() <= 1 and multiply:
                 warnings.warn("Field is being multiplied by a constant so that the lowest luminosity star is at least \
                  \nabove 1 before adding photon noise fluctuations.",
                               LowLuminosityWarning)
+                # Simulation if all luminosities have been set as >= 1.
                 min_luminosity = exposed_true_field[np.nonzero(exposed_true_field)].min()
                 min_exponent = - np.floor(np.log10(min_luminosity))
 
-                self.__work_w_ph_noise = exposed_true_field * 10 ** min_exponent
-                self.__work_w_ph_noise = np.round(self.__work_w_ph_noise)
-                self.__work_w_ph_noise = np.where(self.__work_w_ph_noise > 0, rng.poisson(self.__work_w_ph_noise), 0)
+                self.__aux_w_ph_noise = exposed_true_field * 10 ** min_exponent
+                self.__aux_w_ph_noise = np.round(self.__aux_w_ph_noise)
+
+                # Poisson generation of photon noise arount the (integer) luminosity of the star as mean
+                self.__aux_w_ph_noise = np.where(self.__aux_w_ph_noise > 0, rng.poisson(self.__aux_w_ph_noise), 0)
             else:
-                self.__work_w_ph_noise = np.round(exposed_true_field)
-                self.__work_w_ph_noise = np.where(self.__work_w_ph_noise > 0, rng.poisson(self.__work_w_ph_noise), 0)
+                # Simulation if all luminosities have been left as after exposure time simulation.
+                self.__aux_w_ph_noise = np.round(exposed_true_field)
+                # Poisson generation of photon noise arount the (integer) luminosity of the star as mean
+                self.__aux_w_ph_noise = np.where(self.__aux_w_ph_noise > 0, rng.poisson(self.__aux_w_ph_noise), 0)
 
-            self.__work_w_ph_noise = np.where(self.__work_w_ph_noise < 0, 0, self.__work_w_ph_noise)
+            self.__aux_w_ph_noise = np.where(self.__aux_w_ph_noise < 0, 0, self.__aux_w_ph_noise)
 
-            self.w_ph_noise_field = self.__work_w_ph_noise[self.__pad[0]:-self.__pad[0], self.__pad[1]:-self.__pad[1]]
+            # Crop of the field
+            self.w_ph_noise_field = self.__aux_w_ph_noise[self.__pad[0]:-self.__pad[0], self.__pad[1]:-self.__pad[1]]
             self.status = ImageStatus().PH_NOISE
             self.__ph_noise = True
 
@@ -286,15 +299,15 @@ class Field:
         This works both if the simulation of the photon noise (see `Field.add_photon_noise`) has been added or not.
 
         In case the photon noise has been generated, the background is generated starting from its corresponding
-        working field, otherwise the base working field is used. This method looks for the brightest object in the
+        auxiliary field, otherwise the base auxiliary field is used. This method looks for the brightest object in the
         field (whose location had been saved at initialization, see `Field.initialize_field`) and scaled down by the
         indicated Signal to Noise Ratio `snr`.
 
-        In every pixel of a working field larger than the actual CCD field the noise is generated with a random gaussian
-        number generator. The mean of the noise is set as described before, while the standard deviation is determined
-        from its relative value `rel_var`.
+        In every pixel of an auxiliary field larger than the actual CCD field the noise is generated with a random
+        gaussian number generator. The mean of the noise is set as described before, while the standard deviation is
+        determined from its relative value `rel_var`.
 
-        Any negative number is, then, set to zero and the working field is cropped again and saved in the
+        Any negative number is, then, set to zero and the auxiliary field is cropped again and saved in the
         `w_background_field` attribute.
 
         Parameters
@@ -362,23 +375,28 @@ class Field:
         elif not self.__background or force:
             rng = np.random.default_rng()
 
-            self.__work_w_background = np.zeros(self.__work_field.shape)
+            self.__aux_w_background = np.zeros(self.__aux_field.shape)
 
             if self.__ph_noise:
+                # Generation of background with a normal distribution of mean given by the max value in the field
+                # divided by the SNR.
                 loc = self.w_ph_noise_field[self.max_signal_coords] / snr
                 scale = rel_var * loc
 
-                self.__work_w_background = self.__work_w_ph_noise + rng.normal(loc, scale, self.__work_w_ph_noise.shape)
+                self.__aux_w_background = self.__aux_w_ph_noise + rng.normal(loc, scale, self.__aux_w_ph_noise.shape)
             else:
+                # Generation of background with a normal distribution of mean given by the max value in the field
+                # divided by the SNR.
                 loc = self.true_field[self.max_signal_coords] / snr
                 scale = rel_var * loc
 
-                self.__work_w_background = self.__work_field + rng.normal(loc, scale, self.__work_field.shape)
+                self.__aux_w_background = self.__aux_field + rng.normal(loc, scale, self.__aux_field.shape)
 
-            self.__work_w_background = np.where(self.__work_w_background < 0, 0, self.__work_w_background)
+            self.__aux_w_background = np.where(self.__aux_w_background < 0, 0, self.__aux_w_background)
 
-            self.w_background_field = self.__work_w_background[self.__pad[0]:-self.__pad[0],
-                                                               self.__pad[1]:-self.__pad[1]]
+            # Crop of the auxiliary field.
+            self.w_background_field = self.__aux_w_background[self.__pad[0]:-self.__pad[0],
+                                                              self.__pad[1]:-self.__pad[1]]
 
             self.__mean_background = loc
             self.status = ImageStatus().BACKGROUND
@@ -388,20 +406,20 @@ class Field:
         """
         Method that applies a Point Spread Function (psf) to the field.
 
-        This method creates a working field larger than the CCD's field (see also the `Field.initialize_field` method)
-        from the `w_background_field` attribute, if available. If not, it first looks for the `w_ph_noise_field`
+        This method creates an auxiliary field larger than the CCD's field (see also the `Field.initialize_field`
+        method) from the `w_background_field` attribute, if available. If not, it first looks for the `w_ph_noise_field`
         attribute and, eventually, applies the psf to the base field.
 
         Convolution is made with the `scipy.signal.convolve2d` function, setting the mode as `'same'`. The
-        operation is done over the selected working field and a kernel from `psf.kernels` kernel or a user-defined
-        `psf.Kernel` object. This creates a field that has the same dimensions of the larger between the working field
+        operation is done over the selected auxiliary field and a kernel from `psf.kernels` kernel or a user-defined
+        `psf.Kernel` object. This creates a field that has the same dimensions of the larger between the auxiliary field
         and the kernel, but has some artifacts due to boundary effects. To avoid artifacts due to zero condition
         boundaries or to interpolation, all the simulations are done on a way larger area that will, indeed, have
-        artifacts, but the actual field is obtained after cropping the working field. This also allows for a further
+        artifacts, but the actual field is obtained after cropping the auxiliary field. This also allows for a further
         level of simulation, in which sources (or background) which is not on the CCD can actually have an effect over
         the recorded exposure.
 
-        Any negative number is, then, set to zero and the working field is cropped again and saved in the
+        Any negative number is, then, set to zero and the auxiliary field is cropped again and saved in the
         `w_psf_field` attribute.
 
         Parameters
@@ -443,18 +461,21 @@ class Field:
             warnings.warn("Field has already been convolved with a psf, use `force=True` argument to force psf again.",
                           FieldAlreadyInitializedWarning)
         elif not self.__psf or force:
-            self.__work_w_psf = np.zeros(self.__work_field.shape)
+            self.__aux_w_psf = np.zeros(self.__aux_field.shape)
 
+            # Applying the psf kernel convolution on the auxiliary field corresponding on the actual datatyoe of the
+            # simulation.
             if not self.__ph_noise and not self.__background:
-                self.__work_w_psf = scipysig.convolve2d(self.__work_field, kernel.kernel, mode='same')
+                self.__aux_w_psf = scipysig.convolve2d(self.__aux_field, kernel.kernel, mode='same')
             elif self.__ph_noise and not self.__background:
-                self.__work_w_psf = scipysig.convolve2d(self.__work_w_ph_noise, kernel.kernel, mode='same')
+                self.__aux_w_psf = scipysig.convolve2d(self.__aux_w_ph_noise, kernel.kernel, mode='same')
             elif self.__background:
-                self.__work_w_psf = scipysig.convolve2d(self.__work_w_background, kernel.kernel, mode='same')
+                self.__aux_w_psf = scipysig.convolve2d(self.__aux_w_background, kernel.kernel, mode='same')
 
-            self.__work_w_psf = np.where(self.__work_w_psf < 0, 0, self.__work_w_psf)
+            self.__aux_w_psf = np.where(self.__aux_w_psf < 0, 0, self.__aux_w_psf)
 
-            self.w_psf_field = self.__work_w_psf[self.__pad[0]:-self.__pad[0], self.__pad[1]:-self.__pad[1]]
+            # Crop of the field.
+            self.w_psf_field = self.__aux_w_psf[self.__pad[0]:-self.__pad[0], self.__pad[1]:-self.__pad[1]]
             self.status = ImageStatus().PSF
             self.__psf = True
 
@@ -512,6 +533,8 @@ class Field:
                           FieldAlreadyInitializedWarning)
         elif not self.__has_gain_map or force:
             rng = np.random.default_rng()
+
+            # Creation of the gain map of the CCD as a normal distribution centered on `mean_gain`.
             self.gain_map = rng.normal(mean_gain, rel_var * mean_gain, self.shape)
 
             self.gain_map = np.where(self.gain_map < 0, 0, self.gain_map)
@@ -588,8 +611,11 @@ class Field:
             rng = np.random.default_rng()
 
             if self.__background:
+                # If the background has been simulated, the dark current's mean is a fraction of the used mean
+                # background.
                 dark_current_mean = b_fraction * self.__mean_background
             else:
+                # If the background is absent, the dark current is generated with a given mean.
                 dark_current_mean = dk_c
 
             self.dark_current = rng.normal(dark_current_mean, rel_var * dark_current_mean, self.shape)
@@ -730,11 +756,15 @@ class Field:
             warnings.warn("Complete field has been already generated, use `force=True` argument to force new exposure.",
                           FieldAlreadyInitializedWarning)
         elif not self.__has_record or force:
+            # Simulation advancement at each step after initialization.
             self.add_photon_noise(delta_time=delta_time, force=True, multiply=False)
             self.add_background(fluct=background_fluct, snr=snr, rel_var=bgnd_rel_var, force=True)
             self.apply_psf(kernel=kernel, force=True)
 
             if not self.__has_gain_map:
+                # if a gain map has not been generated, it is now, otherwise the generated one is used. Overriding
+                # the generated gain map should be a careful decision because it is intrinsically tied to the CCD
+                # production process and it is not a random variable, for a given CCD.
                 self.create_gain_map(mean_gain=gain_mean, rel_var=gain_rel_var, force=True)
             self.create_dark_current(b_fraction=dk_c_fraction, rel_var=dk_c_rel_var, dk_c=dk_c, force=True)
 

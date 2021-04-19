@@ -29,7 +29,7 @@ class Field:
 
     def __init__(self, shape):
         """
-        Class that initializates a `Field` instance, to simulate an exposure thorugh a telescope.
+        Class that initializates a `Field` instance, to simulate an exposure through a telescope.
 
         At initialization, the class saves the shape of the output field. Every simulation step is described in its
         own method. See `dir(Field)` for the list of available methods.

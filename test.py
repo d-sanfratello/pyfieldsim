@@ -1,9 +1,25 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import cpnest
+import cpnest.model
 
 from fieldsim.field import Field
 from fieldsim.observation import Observation
 from fieldsim.psf.kernels import GaussKernel
+
+
+def powerlaw_b_fixed_3(x, C, a):
+    return C * x ** (-(a + 3))
+
+
+class PowerLawBFixed3(cpnest.model.Model):
+    def __init__(self, data, x_data, noise_mean=0.):
+        self.names = ['C', 'a']
+        self.bounds = [[0.01, 1000], [0.01, 10]]
+        self.data = data
+        self.noise_mean = noise_mean
+        self.x = x_data
+
 
 if __name__ == "__main__":
     fld = Field((200, 200))

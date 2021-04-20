@@ -8,17 +8,24 @@ from fieldsim.observation import Observation
 from fieldsim.psf.kernels import GaussKernel
 
 
-def powerlaw_b_fixed_3(x, C, a):
-    return C * x ** (-(a + 3))
+def powerlaw_b_fixed(L, C, a):
+    return C * L ** (-(a + 3))
 
 
-class PowerLawBFixed3(cpnest.model.Model):
-    def __init__(self, data, x_data, noise_mean=0.):
+class PowerLawBFixed(cpnest.model.Model):
+    def __init__(self, lum):
         self.names = ['C', 'a']
-        self.bounds = [[0.01, 1000], [0.01, 10]]
-        self.data = data
-        self.noise_mean = noise_mean
-        self.x = x_data
+        self.bounds = [[0.01, 1000], [-3, 10]]
+        self.L = lum
+
+    def log_prior(self, param):
+        logP = super(PowerLawBFixed, self).log_prior(param)
+        logP += -np.log(param['C'])
+        return logP
+
+    def log_likelihood(self, param):
+        model = powerlaw_b_fixed(self.L, param['C'], param['a'])
+        return np.log(model).sum()
 
 
 if __name__ == "__main__":
@@ -38,13 +45,37 @@ if __name__ == "__main__":
     hist, edges = np.histogram(stars, bins='sqrt')
     bin_edges = np.logspace(np.log10(edges[0]), np.log10(edges[-1]), len(edges))
 
+    ModelInference = PowerLawBFixed(stars)
+    work = cpnest.CPNest(ModelInference, verbose=2, nensemble=0, nlive=100, maxmcmc=500, nslice=4, nhamiltonian=0,
+                         resume=0)
+    work.run()
+
+    posteriors = work.get_posterior_samples()
+
+    fig_post, (ax1, ax2) = plt.subplots(nrows=2, ncols=1)
+    ax1.hist(posteriors['C'], density=True, bins='auto')
+    ax1.set_xlabel('Factor')
+    ax2.hist(posteriors['a'], density=True, bins='auto')
+    ax1.set_xlabel('Exponent')
+
+    models = [powerlaw_b_fixed(stars, posteriors['C'][i], posteriors['a'][i] + 1) for i in range(posteriors.shape[0])]
+    models = np.array(models)
+
+    l, m, h = np.percentile(models[31.7, 50, 68.3], axis=0)
+
     fig = plt.figure()
     ax = fig.gca()
-    ax.grid()
     hist, edges, patch = ax.hist(stars, bins=bin_edges, log=True)
-    ax.set_xscale('log')
+    ax.plot(stars, m, linewidth=0.5, color='k')
+    ax.fill_between(stars, l, h, facecolor='grey', alpha=0.5)
+    ax.grid()
 
+    ax.set_xscale('log')
+    plt.show()
+
+    # -------------------------------------------------------------------------
     # Adding photon noise to sources.
+    # -------------------------------------------------------------------------
     # fld.add_photon_noise()
     # obs.update_image()
     #
@@ -75,10 +106,9 @@ if __name__ == "__main__":
     # fld.show_field(field='psf')
     # fld.show_field(field='gain_map')
 
-    plt.show()
-
     # -------------------------------------------------------------------------
     # Complete operation
+    # -------------------------------------------------------------------------
     # field = Field((200, 200))
     # field.initialize_field(density=0.02, datatype='luminosity')
     #

@@ -3,16 +3,16 @@ import numpy as np
 from astropy.io import fits
 from path import Path
 
-from fieldsim.field import Field
-from fieldsim.utils import ImageStatus
-from fieldsim.utils import DataType
+from field import Field
+from utils import ImageStatus
+from utils import DataType
 # noinspection PyProtectedMember
-from fieldsim.utils import _status_values
+from utils import _status_values
 # noinspection PyProtectedMember
-from fieldsim.utils import _datatype_values
+from utils import _datatype_values
 
-from fieldsim.excep import InvalidExtensionError
-from fieldsim.excep import IncompatibleStatusError
+from excep import InvalidExtensionError
+from excep import IncompatibleStatusError
 
 
 class Observation:

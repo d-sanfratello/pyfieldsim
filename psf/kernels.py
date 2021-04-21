@@ -1,6 +1,6 @@
 import numpy as np
 
-from fieldsim.psf import Kernel
+from psf import Kernel
 
 
 class GaussKernel(Kernel):

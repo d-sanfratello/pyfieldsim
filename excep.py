@@ -20,7 +20,7 @@ class InvalidExtensionError(Exception):
 
 class IncompatibleStatusError(Exception):
     def __str__(self):
-        return "Operation requeste is incompatible with the status of the image."
+        return "Operation requested is incompatible with the status of the image."
 
 
 class NotInitializedError(Exception):

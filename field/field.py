@@ -658,7 +658,7 @@ class Field:
             self.dark_current = rng.normal(dark_current_mean, rel_var * dark_current_mean, self.shape)
             self.__has_dark_current = True
 
-    def show_field(self, field='true'):
+    def show_field(self, field='true', mode='log'):
         """
         Method that plots an image of the field.
 
@@ -687,6 +687,9 @@ class Field:
         ----------
         field: `str` in ['true', 'ph_noise', 'background', 'psf', 'exposure', 'gain_map', 'dark_current']
             The type of field to be plotted.
+        mode: `str` either `'log'` or `'lin'`
+            If the image has data type `LUMINOSITY` or `MASS`, it allows to represent the base 10 logarithm of the
+            image itself, rather than the linear representation. Default is `'log'`.
 
         Returns
         -------
@@ -695,9 +698,9 @@ class Field:
         Raises
         ------
         `TypeError`:
-            If `field` is not a string.
+            If `field` or `mode` are not strings.
         `ValueError`:
-            If `field` is not in the aforementioned list.
+            If `field` or `mode` are not in the aforementioned lists.
         `FieldAlreadyInitializedWarning`:
             If the dark current had been previously simulated. Execution is not halted, but the dark current is not
             updated.
@@ -712,13 +715,21 @@ class Field:
         elif isinstance(field, str) and field not in self.__valid_fields:
             raise ValueError('`field` argument not in accepted list of valid fields.')
 
+        if not isinstance(mode, str):
+            raise TypeError('`mode` argument must be a string.')
+        elif isinstance(mode, str) and mode not in ['log', 'lin']:
+            raise ValueError('`mode` argument not in accepted list of valid mode.')
+
         image = getattr(self, self.__attributes[field])
 
         fig = plt.figure()
         ax1 = fig.gca()
         ax1.grid()
 
-        im = ax1.imshow(image.T, origin='lower', cmap='binary')
+        if self.datatype != DataType().MAGNITUDE and mode == 'log':
+            im = ax1.imshow(np.log10(image.T), origin='lower', cmap='binary')
+        else:
+            im = ax1.imshow(image.T, origin='lower', cmap='binary')
         ax1.set_xlabel('RA')
         ax1.set_ylabel('DEC')
 

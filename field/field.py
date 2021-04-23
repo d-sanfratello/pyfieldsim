@@ -578,18 +578,18 @@ class Field:
             self.__mean_gain = mean_gain
             self.__has_gain_map = True
 
-    def create_dark_current(self, b_fraction=0.1, rel_var=0.01, dk_c=1, force=False):
+    def create_dark_current(self, b_fraction=0.1, rel_var=0.01, dk_c=None, force=False):
         """
         Method that simulates a dark current inside the CCD.
 
         This method works either after having simulated a background or by manual injection of the mean value. If a
-        background has been generated, this method reads a private attribute containing the mean value of the
-        background and determines the mean of the dark current by calculating:
+        background has been generated and `dk_c` is `None`, this method reads a private attribute containing the mean
+        value of the background and determines the mean of the dark current by calculating:
 
             dark_current_mean = b_fraction * Field.__mean_background
 
-        If, on the other hand, the background isn't available, the dark current mean value is set from the `dk_c`
-        argument.
+        If, on the other hand, the background isn't available or `dk_c` is not `None`, the dark current mean value is
+        set from the `dk_c` argument.
 
         Parameters
         ----------
@@ -598,17 +598,19 @@ class Field:
             Default is 0.1 (optional).
         rel_var: `number >= 0
             Relative dispersion of the dark current of the CCD. Default is 0.01.
-        dk_c: `number` >= 0
-            Mean value of the dark current of the CCD, if no background is available. Default is 1 (optional).
+        dk_c: `number` >= 0 or `None`
+            Mean value of the dark current of the CCD, if no background is available or to override its value.
+            Default is `None` (optional).
         force: `bool`
             Flag to force re-initialization of the field if it had already been initialized. Default is `False`.
 
         Raises
         ------
         `TypeError`:
-            If `b_fraction`, `rel_var` or `dk_c` are not numbers or if `force` is not a `bool`.
+            If `b_fraction`, `rel_var` are not numbers or if `force` is not a `bool` or if `dk_c` is neither a number
+            nor `None`.
         `ValueError`:
-            If `b_fraction`, `rel_var` or `dk_c` are negative.
+            If `b_fraction`, `rel_var` or `dk_c` are negative or if no background has been generated and `dk_c` is None.
         `FieldAlreadyInitializedWarning`:
             If the dark current had been previously simulated. Execution is not halted, but the dark current is not
             updated.
@@ -633,9 +635,11 @@ class Field:
         elif rel_var < 0:
             raise ValueError('`rel_var` cannot be less than zero.')
 
-        if not isinstance(dk_c, (int, float)):
-            raise TypeError('`dk_c` must be a number.')
-        elif dk_c < 0:
+        if not isinstance(dk_c, (int, float)) and dk_c is not None:
+            raise TypeError('`dk_c` must be a number or `None`.')
+        elif not self.__background and dk_c is None:
+            raise ValueError('If no background has been generated, `dk_c` must be a number.')
+        elif isinstance(dk_c, (int, float)) and dk_c < 0:
             raise ValueError('`dk_c` cannot be less than zero.')
 
         if not isinstance(force, bool):
@@ -647,7 +651,7 @@ class Field:
         elif not self.__has_dark_current or force:
             rng = np.random.default_rng()
 
-            if self.__background:
+            if self.__background and dk_c is None:
                 # If the background has been simulated, the dark current's mean is a fraction of the used mean
                 # background.
                 dark_current_mean = b_fraction * self.__mean_background

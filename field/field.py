@@ -83,7 +83,7 @@ class Field:
         self.status = ImageStatus().NOTINIT
         self.datatype = DataType().NOTINIT
 
-    def initialize_field(self, density=0.05, e_imf=2.4, e_lm=3, cst_lm=1,
+    def initialize_field(self, density=0.05, e_imf=2.4, e_lm=3, cst_lm=1, seed=None,
                          datatype='luminosity', force=False):
         """
         Method that initializates the field randomly generating the stars in it as instances of the
@@ -121,6 +121,9 @@ class Field:
         cst_lm: `number`
             Factor in front of the mass-luminosity relation powerlaw, to be passed to the
             `skysource.SkySource.lm_relation` method. Default is `1`.
+        seed: `int` or `None`
+            If of type `int`, passes the seed to the pseudo-random number generator of numpy. If `None`,
+            numpy generates a seed by itself. Default is `None`.
         datatype: `'luminosity'`, `'mass'` or `'magnitude'`
             Defines the datatype represented in the field. Default is `'luminosity'`.
         force: `bool`
@@ -146,6 +149,9 @@ class Field:
         --------
         `skysource.SkySource`, `utils.DataType`.
         """
+        if not isinstance(seed, int) and seed is not None:
+            raise TypeError("`seed` argument must be either an `int` or `None`.")
+
         if not isinstance(datatype, str):
             raise TypeError("`datatype` argument must be a string.")
         elif datatype not in ['luminosity', 'magnitude', 'mass']:
@@ -158,7 +164,7 @@ class Field:
             warnings.warn("Field already initialized, use `force=True` argument to force re-initialization.",
                           FieldAlreadyInitializedWarning)
         elif not self.__initialized or force:
-            rng = np.random.default_rng()
+            rng = np.random.default_rng(seed=seed)
 
             # Generation of the auxiliary field
             aux_shape = (self.shape[0] + 2 * self.__pad[0], self.shape[1] + 2 * self.__pad[1])

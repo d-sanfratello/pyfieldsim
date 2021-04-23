@@ -282,13 +282,12 @@ class Field:
                 min_exponent = - np.floor(np.log10(min_luminosity))
 
                 self.__aux_w_ph_noise = exposed_true_field * 10 ** min_exponent
-                self.__aux_w_ph_noise = np.round(self.__aux_w_ph_noise)
 
                 # Poisson generation of photon noise arount the (integer) luminosity of the star as mean
                 self.__aux_w_ph_noise = np.where(self.__aux_w_ph_noise > 0, rng.poisson(self.__aux_w_ph_noise), 0)
             else:
                 # Simulation if all luminosities have been left as after exposure time simulation.
-                self.__aux_w_ph_noise = np.round(exposed_true_field)
+                self.__aux_w_ph_noise = exposed_true_field
                 # Poisson generation of photon noise arount the (integer) luminosity of the star as mean
                 self.__aux_w_ph_noise = np.where(self.__aux_w_ph_noise > 0, rng.poisson(self.__aux_w_ph_noise), 0)
 

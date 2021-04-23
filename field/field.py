@@ -3,18 +3,18 @@ import numpy as np
 import scipy.signal as scipysig
 import warnings
 
-from skysource import SkySource
-from utils import DataType
-from utils import ImageStatus
+from ..skysource import SkySource
+from ..utils import DataType
+from ..utils import ImageStatus
 
-from psf import Kernel
+from ..psf import Kernel
 
-from excep import WrongShapeError
-from excep import NotInitializedError
-from excep import ArgumentError
-from excep import UnexpectedDatatypeError
-from warn import FieldAlreadyInitializedWarning
-from warn import LowLuminosityWarning
+from ..excep import WrongShapeError
+from ..excep import NotInitializedError
+from ..excep import ArgumentError
+from ..excep import UnexpectedDatatypeError
+from ..warn import FieldAlreadyInitializedWarning
+from ..warn import LowLuminosityWarning
 
 
 class Field:

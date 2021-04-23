@@ -56,7 +56,7 @@ class SkySource:
         self.luminosity = None
         self.magnitude = None
 
-    def initialize(self, e_imf=2.4, e_lm=3, cst_lm=1):
+    def initialize(self, e_imf=2.4, e_lm=3, cst_lm=1, seed=None):
         """
         Method that initializates the mass, luminosity and magnitude-like quantities for a `SkySource`.
 
@@ -75,6 +75,9 @@ class SkySource:
         cst_lm: `number`
             Factor in front of the mass-luminosity relation powerlaw, to be passed to the `self.lm_relation` method.
             Default is `1`.
+        seed: `int` or `None`
+            If of type `int`, passes the seed to the pseudo-random number generator of numpy. If `None`,
+            numpy generates a seed by itself. Default is `None`.
 
         Returns
         -------
@@ -91,7 +94,10 @@ class SkySource:
         --------
         `SkySource.random_cimf`, `SkySource.lm_relation` and `SkySource.l2mag`.
         """
-        rng = np.random.default_rng()
+        if not isinstance(seed, int) and seed is not None:
+            raise TypeError("`seed` argument must be either an `int` or `None`.")
+
+        rng = np.random.default_rng(seed=seed)
 
         self.mass = self.random_cimf(rng.random(), e=e_imf)
         self.luminosity = self.lm_relation(e=e_lm, cst=cst_lm)

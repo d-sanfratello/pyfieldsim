@@ -1,19 +1,23 @@
+import os
+
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.signal as scipysig
 import warnings
 
+from path import Path
+
+from ..psf import Kernel
 from ..skysource import SkySource
 from ..utils import DataType
 from ..utils import ImageStatus
-
-from ..psf import Kernel
 
 from ..excep import WrongShapeError
 from ..excep import NotInitializedError
 from ..excep import ArgumentError
 from ..excep import UnexpectedDatatypeError
 from ..excep import IncompatibleStatusError
+from ..excep import IncompleteImageError
 from ..warn import CorrectDataTypeWarning
 from ..warn import FieldAlreadyInitializedWarning
 from ..warn import LowLuminosityWarning
@@ -66,7 +70,17 @@ class Field:
         self.max_signal_coords = None
         self.gain_map = None
         self.__mean_gain = None
+        self.__std_gain = None
+        self.__rel_var_gain = None
         self.__mean_background = None
+        self.__snr_background = None
+        self.__std_background = None
+        self.__rel_var_background = None
+        self.__sigma_x_psf = None
+        self.__sigma_y_psf = None
+        self.__mean_dk_c = None
+        self.__std_dk_c = None
+        self.__rel_var_dk_c = None
         self.dark_current = None
         self.true_field = None
         self.w_ph_noise_field = None
@@ -435,6 +449,9 @@ class Field:
             self.w_background_field = self.__aux_w_background[self.__pad[0]:-self.__pad[0],
                                                               self.__pad[1]:-self.__pad[1]]
 
+            self.__snr_background = snr
+            self.__std_background = scale
+            self.__rel_var_background = rel_var
             self.__mean_background = loc
             self.status = ImageStatus().BACKGROUND
             self.__background = True
@@ -513,6 +530,9 @@ class Field:
 
             # Crop of the field.
             self.w_psf_field = self.__aux_w_psf[self.__pad[0]:-self.__pad[0], self.__pad[1]:-self.__pad[1]]
+
+            self.__sigma_x_psf = kernel.width_x
+            self.__sigma_y_psf = kernel.width_y
             self.status = ImageStatus().PSF
             self.__psf = True
 
@@ -576,6 +596,8 @@ class Field:
 
             self.gain_map = np.where(self.gain_map < 0, 0, self.gain_map)
             self.__mean_gain = mean_gain
+            self.__std_gain = rel_var * mean_gain
+            self.__rel_var_gain = rel_var
             self.__has_gain_map = True
 
     def create_dark_current(self, b_fraction=0.1, rel_var=0.01, dk_c=None, force=False):
@@ -596,7 +618,7 @@ class Field:
         b_fraction: `number` >= 0
             Fraction of the mean background to be set as mean for the distribution of the dark current of the CCD.
             Default is 0.1 (optional).
-        rel_var: `number >= 0
+        rel_var: `number` >= 0
             Relative dispersion of the dark current of the CCD. Default is 0.01.
         dk_c: `number` >= 0 or `None`
             Mean value of the dark current of the CCD, if no background is available or to override its value.
@@ -660,6 +682,10 @@ class Field:
                 dark_current_mean = dk_c
 
             self.dark_current = rng.normal(dark_current_mean, rel_var * dark_current_mean, self.shape)
+            self.__mean_dk_c = dark_current_mean
+            self.__std_dk_c = rel_var * dark_current_mean
+            self.__rel_var_dk_c = rel_var
+
             self.__has_dark_current = True
 
     def show_field(self, field='true', mode='log'):
@@ -821,7 +847,72 @@ class Field:
             self.create_dark_current(b_fraction=dk_c_fraction, rel_var=dk_c_rel_var, dk_c=dk_c, force=True)
 
             self.recorded_field = self.gain_map * self.w_psf_field + self.dark_current
+            self.status = ImageStatus().EXPOSURE
             self.__has_record = True
+
+    def save_field(self, name, path=None):
+        """
+        Method to save generated data to a txt file.
+
+        Parameters
+        ----------
+        name: `str`
+            The name of the file (without extension).
+        path: `str` or `path.Path` instance
+            Path where to save the files. If `None`, the current directory is used. Default is `None`.
+
+        Raises
+        ------
+        `TypeError`:
+            If `name` is not a string or if `path` is not a string or a `Path` and is not `None`.
+        `IncompatibleStatusError`:
+            If the status of the image is not `EXPOSURE`.
+        `NotInitializedError`:
+            If the field has not been initialized, yet.
+        `IncompleteImageError`:
+            If the complete simulation has not been run through the `record_field` method, yet.
+        """
+        if not isinstance(name, str):
+            raise TypeError('`name` of the files must be a string.')
+        if not isinstance(path, (str, Path)) and path is not None:
+            raise TypeError('`path` must be either a string or a `Path` instance.')
+
+        if self.status != ImageStatus().EXPOSURE:
+            raise IncompatibleStatusError
+        if not self.__initialized:
+            raise NotInitializedError
+        if not self.__ph_noise or not self.__background or not self.__psf or not self.__has_gain_map or not \
+                self.__has_dark_current:
+            raise IncompleteImageError
+
+        if path is None:
+            path = os.getcwd()
+        data_path = os.path.join(path, name + '_data.txt')
+        gain_path = os.path.join(path, name + '_gain.txt')
+        gen_path = os.path.join(path, name + '_settings.txt')
+
+        header = "Image data"
+        np.savetxt(data_path, self.shot, fmt='%g', header=header)
+
+        header = "Gain map"
+        np.savetxt(gain_path, self.gain_map, fmt='%g', header=header)
+
+        gen_output = ['# Initial Settings\n',
+                      'background: SNR = {:g} - {:g}%\n'.format(self.__snr_background, self.__rel_var_background),
+                      '            {:g} +- {:g}\n'.format(self.__mean_background, self.__std_background),
+                      'psf       : {:g} x - {:g} y\n'.format(self.__sigma_x_psf, self.__sigma_y_psf),
+                      'gain      : {:g} +- {:g} ({:g}%)\n'.format(self.__mean_gain, self.__std_gain,
+                                                                  self.__rel_var_gain),
+                      'dark curr : {:g} +- {:g} ({:g}%)\n'.format(self.__mean_dk_c, self.__std_dk_c,
+                                                                  self.__rel_var_dk_c),
+                      '\n',
+                      '# Stars (row, column, mass, luminosity)\n']
+        with open(gen_path, 'w') as f:
+            for row in gen_output:
+                f.write(row)
+            for source in self.sources:
+                f.write('{:d}\t{:d}\t{:g}\t{:g}\n'.format(source.coords[0], source.coords[1],
+                                                          source.mass, source.luminosity))
 
     @property
     def shot(self):

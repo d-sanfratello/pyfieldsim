@@ -36,3 +36,8 @@ class ArgumentError(Exception):
 class UnexpectedDatatypeError(Exception):
     def __str__(self):
         return "Unexpected `DataType` to perform this operation."
+
+
+class IncompleteImageError(Exception):
+    def __str__(self):
+        return "Cannot perform operation on an incomplete image."

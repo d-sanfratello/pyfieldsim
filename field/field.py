@@ -13,6 +13,8 @@ from ..excep import WrongShapeError
 from ..excep import NotInitializedError
 from ..excep import ArgumentError
 from ..excep import UnexpectedDatatypeError
+from ..excep import IncompatibleStatusError
+from ..warn import CorrectDataTypeWarning
 from ..warn import FieldAlreadyInitializedWarning
 from ..warn import LowLuminosityWarning
 
@@ -208,6 +210,35 @@ class Field:
 
             self.status = ImageStatus().SINGLESTARS
             self.__initialized = True
+
+    def convert_to_luminosity(self):
+        """
+        Method that converts the data represented to `luminosity`.
+
+        Raises
+        ------
+        `IncompatibleStatusError`:
+            If the status of the image is not `SINGLESTARS`.
+        `NotInitializedError`:
+            If the field has not been initialized, yet.
+        `CorrectDataWarning`:
+            If the data type of the image is already `LUMINOSITY`.
+
+        See Also
+        --------
+        `utils.DataType`, `utils.ImageStatus`.
+        """
+        if self.status != ImageStatus().SINGLESTARS:
+            raise IncompatibleStatusError
+        if self.datatype == DataType().LUMINOSITY:
+            warnings.warn("`datatype` is already set to `\"luminosity\"`.", CorrectDataTypeWarning)
+        if not self.__initialized:
+            raise NotInitializedError
+
+        for source in self.sources:
+            self.__aux_field[source.coords[0], source.coords[1]] = source.luminosity
+
+        self.datatype = DataType().LUMINOSITY
 
     def add_photon_noise(self, delta_time=1, force=False, multiply=False):
         """

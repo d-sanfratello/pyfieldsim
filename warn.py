@@ -8,3 +8,7 @@ class FieldAlreadyInitializedWarning(UserWarning):
 
 class LowLuminosityWarning(UserWarning):
     pass
+
+
+class CorrectDataTypeWarning(UserWarning):
+    pass

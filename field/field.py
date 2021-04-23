@@ -132,7 +132,7 @@ class Field:
         Raises
         ------
         `TypeError`:
-            If `datatype` is not a string or if `force` is not a `bool`.
+            If `datatype` is not a string or if `force` is not a `bool` or if `seed` is not an `int` or `None`.
         `ValueError`:
             If `datatype` is not `'luminosity'`, `'mass'` or `'magnitude'`.
         `FieldAlreadyInitializedWarning`:
@@ -214,8 +214,8 @@ class Field:
         Method that applies photon fluctuations to the luminosity of stars in the field.
 
         The auxiliary field from the initialization is multiplied by `delta_time`, used to simulate longer (or shorter)
-        exposures this is used to create another auxiliary field for the photon noise. These values are used,
-        rounded to the closer integer, as the mean values of a random poisson number generator.
+        exposures this is used to create another auxiliary field for the photon noise. These values are used as the mean
+        values of a random poisson number generator.
 
         Any negative number is, then, set to zero and the auxiliary field is cropped again and saved in the
         `w_ph_noise_field` attribute.

@@ -84,6 +84,11 @@ class SkySource:
         self: `SkySource`
             Returns the object.
 
+        Raises
+        ------
+        `TypeError`:
+            If `seed` is not an `int` or `None`.
+
         Examples
         --------
         >>> # Initializes the mass of the source with the Salpeter IMF. The luminosity powerlaw is set for a Main

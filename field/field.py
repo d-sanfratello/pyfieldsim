@@ -770,7 +770,7 @@ class Field:
     def record_field(self, kernel, delta_time=1,
                      background_fluct='gauss', snr=10, bgnd_rel_var=0.05,
                      gain_mean=1, gain_rel_var=0.01,
-                     dk_c_fraction=0.1, dk_c_rel_var=0.01, dk_c=1,
+                     dk_c_fraction=0.1, dk_c_rel_var=0.01, dk_c=None,
                      force=False):
         """
         Method that simulates the observation of a field.

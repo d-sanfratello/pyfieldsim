@@ -906,7 +906,9 @@ class Field:
                       'dark curr : {:g} +- {:g} ({:g}%)\n'.format(self.__mean_dk_c, self.__std_dk_c,
                                                                   100 * self.__rel_var_dk_c),
                       '\n',
-                      '# Stars (row, column, mass, luminosity)\n']
+                      '# If plotting data with `plt.imshow`, correct coords are visible with `plt.imshow(array.T)`,\n',
+                      '# where array is the content from `*_data.txt`\n',
+                      '# Stars (x, y, mass, luminosity)\n']
         with open(gen_path, 'w') as f:
             for row in gen_output:
                 f.write(row)

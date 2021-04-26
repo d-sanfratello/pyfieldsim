@@ -898,13 +898,13 @@ class Field:
         np.savetxt(gain_path, self.gain_map, fmt='%g', header=header)
 
         gen_output = ['# Initial Settings\n',
-                      'background: SNR = {:g} - {:g}%\n'.format(self.__snr_background, self.__rel_var_background),
+                      'background: SNR = {:g} - {:g}%\n'.format(self.__snr_background, 100 * self.__rel_var_background),
                       '            {:g} +- {:g}\n'.format(self.__mean_background, self.__std_background),
                       'psf       : {:g} x - {:g} y\n'.format(self.__sigma_x_psf, self.__sigma_y_psf),
                       'gain      : {:g} +- {:g} ({:g}%)\n'.format(self.__mean_gain, self.__std_gain,
-                                                                  self.__rel_var_gain),
+                                                                  100 * self.__rel_var_gain),
                       'dark curr : {:g} +- {:g} ({:g}%)\n'.format(self.__mean_dk_c, self.__std_dk_c,
-                                                                  self.__rel_var_dk_c),
+                                                                  100 * self.__rel_var_dk_c),
                       '\n',
                       '# Stars (row, column, mass, luminosity)\n']
         with open(gen_path, 'w') as f:

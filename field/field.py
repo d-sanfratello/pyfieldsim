@@ -220,7 +220,7 @@ class Field:
             src_copy = filter(lambda x: (0 <= x.coords[0] < self.shape[0] and 0 <= x.coords[1] < self.shape[1]),
                               self.sources)
 
-            self.sources = src_copy
+            self.sources = np.array(list(src_copy))
 
             self.status = ImageStatus().SINGLESTARS
             self.__initialized = True

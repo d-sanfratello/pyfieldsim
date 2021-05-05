@@ -56,7 +56,7 @@ class SkySource:
         self.luminosity = None
         self.magnitude = None
 
-    def initialize(self, e_imf=2.4, e_lm=3, cst_lm=1, seed=None):
+    def initialize(self, e_imf=2.4, e_lm=3, cst_lm=1, rng=None):
         """
         Method that initializates the mass, luminosity and magnitude-like quantities for a `SkySource`.
 
@@ -75,9 +75,10 @@ class SkySource:
         cst_lm: `number`
             Factor in front of the mass-luminosity relation powerlaw, to be passed to the `self.lm_relation` method.
             Default is `1`.
-        seed: `int` or `None`
-            If of type `int`, passes the seed to the pseudo-random number generator of numpy. If `None`,
-            numpy generates a seed by itself. Default is `None`.
+        rng: `numpy.random.Generator` or `None`
+            If of type `numpy.random.Generator`, it uses the given pseudo-random number generator. If `None`,
+            the `numpy.random.default_rng()` generator is used with a casual seed. Default is `None`. (Modified on
+            May 5th 2021)
 
         Returns
         -------
@@ -87,7 +88,7 @@ class SkySource:
         Raises
         ------
         `TypeError`:
-            If `seed` is not an `int` or `None`.
+            If `rng` is not an `np.random.Generator` or `None`. (Modified on May 5th 2021)
 
         Examples
         --------
@@ -97,12 +98,16 @@ class SkySource:
 
         See Also
         --------
-        `SkySource.random_cimf`, `SkySource.lm_relation` and `SkySource.l2mag`.
+        `SkySource.random_cimf`, `SkySource.lm_relation`, `SkySource.l2mag` and `numpy.random.default_rng` or
+        `numpy.random.Generator`. (Modified on May 5th 2021)
         """
-        if not isinstance(seed, int) and seed is not None:
-            raise TypeError("`seed` argument must be either an `int` or `None`.")
+        if not isinstance(rng, np.random.Generator) and rng is not None:
+            raise TypeError("`rng` argument must be either a `numpy.random.Generator` or `None`.")
 
-        rng = np.random.default_rng(seed=seed)
+        if rng is None:
+            rng = np.random.default_rng()
+        else:
+            rng = rng
 
         self.mass = self.random_cimf(rng.random(), e=e_imf)
         self.luminosity = self.lm_relation(e=e_lm, cst=cst_lm)

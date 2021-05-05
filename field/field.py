@@ -191,7 +191,7 @@ class Field:
             stars_coords_arr = np.argwhere(rand_distribution <= density)
 
             # Saving the sources and randomly generating their masses
-            self.sources = np.array([SkySource(coords).initialize(e_imf, e_lm, cst_lm, seed=seed) for coords in
+            self.sources = np.array([SkySource(coords).initialize(e_imf, e_lm, cst_lm, rng=rng) for coords in
                                      stars_coords_arr])
             self.true_field = np.zeros(self.shape)
 

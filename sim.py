@@ -25,4 +25,5 @@ if __name__ == "__main__":
                        dk_c_fraction=0.1, dk_c_rel_var=0.01, dk_c=1,
                        force=True)
 
+    field.save_field(name='stars')
     field.show_field('exposure')

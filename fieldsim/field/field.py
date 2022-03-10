@@ -102,8 +102,8 @@ class Field:
         self.status = ImageStatus().NOTINIT
         self.datatype = DataType().NOTINIT
 
-    def initialize_field(self, density=0.05, e_imf=2.4, e_lm=3, cst_lm=1, seed=None,
-                         datatype='luminosity', force=False):
+    def initialize_field(self, density=0.05, e_imf=2.4, e_lm=3, cst_lm=1,
+                         seed=None, datatype='luminosity', force=False):
         """
         Method that initializates the field randomly generating the stars in it
         as instances of the `skysource.SkySource` class.
@@ -241,7 +241,8 @@ class Field:
                               self.__pad[0]:-self.__pad[0],
                               self.__pad[1]:-self.__pad[1]]
 
-            # Max signal in the cropped field is saved, to use it at background generation with the SNR
+            # Max signal in the cropped field is saved, to use it at background
+            # generation with the SNR
             self.max_signal_coords = np.unravel_index(
                 np.argmax(self.true_field), self.shape)
 
@@ -995,8 +996,8 @@ class Field:
                 b_fraction=dk_c_fraction, rel_var=dk_c_rel_var, dk_c=dk_c,
                 force=True)
 
-            self.recorded_field = self.gain_map * self.w_psf_field + \
-                                  self.dark_current
+            self.recorded_field = \
+                self.gain_map * self.w_psf_field + self.dark_current
             self.status = ImageStatus().EXPOSURE
             self.__has_record = True
 

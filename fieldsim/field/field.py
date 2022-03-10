@@ -102,6 +102,8 @@ class Field:
         self.status = ImageStatus().NOTINIT
         self.datatype = DataType().NOTINIT
 
+        self.__rng = None
+
     def initialize_field(self, density=0.05, e_imf=2.4, e_lm=3, cst_lm=1,
                          seed=None, datatype='luminosity', force=False):
         """
@@ -203,7 +205,7 @@ class Field:
                           " to force re-initialization.",
                           FieldAlreadyInitializedWarning)
         elif not self.__initialized or force:
-            rng = np.random.default_rng(seed=seed)
+            self.rng = np.random.default_rng(seed=seed)
 
             # Generation of the auxiliary field
             aux_shape = (
@@ -212,12 +214,13 @@ class Field:
             self.__aux_field = np.zeros(aux_shape)
 
             # Random generation of the stars
-            rand_distribution = rng.random(self.__aux_field.shape)
+            rand_distribution = self.__rng.random(self.__aux_field.shape)
             stars_coords_arr = np.argwhere(rand_distribution <= density)
 
             # Saving the sources and randomly generating their masses
             self.sources = np.array([
-                SkySource(coords).initialize(e_imf, e_lm, cst_lm, rng=rng)
+                SkySource(coords).initialize(e_imf, e_lm, cst_lm,
+                                             rng=self.__rng)
                 for coords in stars_coords_arr])
             self.true_field = np.zeros(self.shape)
 
@@ -358,8 +361,6 @@ class Field:
                           "argument to force photon noise again.",
                           FieldAlreadyInitializedWarning)
         elif not self.__ph_noise or force:
-            rng = np.random.default_rng()
-
             # Generating the auxiliary fields and simulating exposure time
             # variation with `delta_time`
             exposed_true_field = self.__aux_field * delta_time
@@ -382,7 +383,7 @@ class Field:
                 # luminosity of the star as mean
                 self.__aux_w_ph_noise = np.where(
                     self.__aux_w_ph_noise > 0,
-                    rng.poisson(self.__aux_w_ph_noise), 0)
+                    self.__rng.poisson(self.__aux_w_ph_noise), 0)
             else:
                 # Simulation if all luminosities have been left as after
                 # exposure time simulation.
@@ -391,7 +392,7 @@ class Field:
                 # luminosity of the star as mean
                 self.__aux_w_ph_noise = np.where(
                     self.__aux_w_ph_noise > 0,
-                    rng.poisson(self.__aux_w_ph_noise), 0)
+                    self.__rng.poisson(self.__aux_w_ph_noise), 0)
 
             self.__aux_w_ph_noise = np.where(
                 self.__aux_w_ph_noise < 0, 0, self.__aux_w_ph_noise)
@@ -499,8 +500,6 @@ class Field:
                           "argument to force background again.",
                           FieldAlreadyInitializedWarning)
         elif not self.__background or force:
-            rng = np.random.default_rng()
-
             self.__aux_w_background = np.zeros(self.__aux_field.shape)
 
             if self.__ph_noise:
@@ -512,7 +511,7 @@ class Field:
 
                 self.__aux_w_background = \
                     self.__aux_w_ph_noise + \
-                    rng.normal(loc, scale, self.__aux_w_ph_noise.shape)
+                    self.__rng.normal(loc, scale, self.__aux_w_ph_noise.shape)
             else:
                 # Generation of background with a normal distribution of mean
                 # given by the max value in the field
@@ -522,7 +521,7 @@ class Field:
 
                 self.__aux_w_background = \
                     self.__aux_field + \
-                    rng.normal(loc, scale, self.__aux_field.shape)
+                    self.__rng.normal(loc, scale, self.__aux_field.shape)
 
             self.__aux_w_background = np.where(
                 self.__aux_w_background < 0, 0, self.__aux_w_background)
@@ -593,9 +592,8 @@ class Field:
 
         See Also
         --------
-        `psf.Kernel`, `Field.initialize_field` and `Field.add_photon_noise`.
-        See also `scipy.signal.convolve2d`
-        documentation.
+        `psf.Kernel`, `Field.initialize_field` and `Field.add_photon_noise`. See
+        also `scipy.signal.convolve2d` documentation.
         """
         if not isinstance(kernel, Kernel):
             raise TypeError('`kernel` argument must be an instance of '
@@ -695,13 +693,11 @@ class Field:
                           " to force gain map generation again.",
                           FieldAlreadyInitializedWarning)
         elif not self.__has_gain_map or force:
-            rng = np.random.default_rng()
-
             # Creation of the gain map of the CCD as a normal distribution
             # centered on `mean_gain`.
-            self.gain_map = rng.normal(mean_gain,
-                                       rel_var * mean_gain,
-                                       self.shape)
+            self.gain_map = self.__rng.normal(mean_gain,
+                                              rel_var * mean_gain,
+                                              self.shape)
 
             self.gain_map = np.where(self.gain_map < 0, 0, self.gain_map)
             self.__mean_gain = mean_gain
@@ -790,8 +786,6 @@ class Field:
                           "`force=True` argument to force dark current "
                           "generation again.", FieldAlreadyInitializedWarning)
         elif not self.__has_dark_current or force:
-            rng = np.random.default_rng()
-
             if self.__background and dk_c is None:
                 # If the background has been simulated, the dark current's mean
                 # is a fraction of the used mean background.
@@ -801,9 +795,9 @@ class Field:
                 # with a given mean.
                 dark_current_mean = dk_c
 
-            self.dark_current = rng.normal(dark_current_mean,
-                                           rel_var * dark_current_mean,
-                                           self.shape)
+            self.dark_current = self.__rng.normal(dark_current_mean,
+                                                  rel_var * dark_current_mean,
+                                                  self.shape)
             self.__mean_dk_c = dark_current_mean
             self.__std_dk_c = rel_var * dark_current_mean
             self.__rel_var_dk_c = rel_var

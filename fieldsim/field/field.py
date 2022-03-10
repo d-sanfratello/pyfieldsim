@@ -24,7 +24,8 @@ from fieldsim.utils.warnings import LowLuminosityWarning
 
 
 class Field:
-    __valid_fields = ['true', 'ph_noise', 'background', 'psf', 'exposure', 'gain_map', 'dark_current']
+    __valid_fields = ['true', 'ph_noise', 'background', 'psf', 'exposure',
+                      'gain_map', 'dark_current']
     __attributes = {'true': 'true_field',
                     'ph_noise': 'w_ph_noise_field',
                     'background': 'w_background_field',
@@ -35,10 +36,12 @@ class Field:
 
     def __init__(self, shape):
         """
-        Class that initializates a `Field` instance, to simulate an exposure through a telescope.
+        Class that initializates a `Field` instance, to simulate an exposure
+        through a telescope.
 
-        At initialization, the class saves the shape of the output field. Every simulation step is described in its
-        own method. See `dir(Field)` for the list of available methods.
+        At initialization, the class saves the shape of the output field. Every
+        simulation step is described in its own method. See `dir(Field)` for the
+        list of available methods.
 
         Parameters
         ----------
@@ -102,88 +105,110 @@ class Field:
     def initialize_field(self, density=0.05, e_imf=2.4, e_lm=3, cst_lm=1, seed=None,
                          datatype='luminosity', force=False):
         """
-        Method that initializates the field randomly generating the stars in it as instances of the
+        Method that initializates the field randomly generating the stars in it
+        as instances of the `skysource.SkySource` class.
+
+        It defines an auxiliary field `Field.__aux_field` whose shape is the
+        shape defined at initialization with a padding added. This will be
+        useful at later stages of simulations, where the convolution with the
+        psf kernel would generate boundary artifacts. In this implementation,
+        though, the artifacts are far from the actual boundary of the image,
+        which is realized by cropping the auxiliary field at its center. The
+        size of the padding is, in each direction, equal to 1/4 of the
+        corresponding edge's shape.
+
+        After initializing the random number generator from numpy, the auxiliary
+        field is initialized with random numbers in the interval [0, 1). If the
+        generated number in a given pixel is below a threshold given by
+        `density`, a star is initialized at those coordinates, by using the
         `skysource.SkySource` class.
 
-        It defines an auxiliary field `Field.__aux_field` whose shape is the shape defined at initialization with a
-        padding added. This will be useful at later stages of simulations, where the convolution with the psf kernel
-        would generate boundary artifacts. In this implementation, though, the artifacts are far from the actual
-        boundary of the image, which is realized by cropping the auxiliary field at its center. The size of the padding
-        is, in each direction, equal to 1/4 of the corresponding edge's shape.
+        The auxiliary field is, then, cropped to obtain the actual field on the
+        CCD. Also, in the `Field.sources` attribute the stars belonging to the
+        padding area are deleted. This is to simulate their existence (and
+        effect on the field when psf are taken into account) but without being
+        able to measure their distance from the exposed field.
 
-        After initializing the random number generator from numpy, the auxiliary field is initialized with random
-        numbers in the interval [0, 1). If the generated number in a given pixel is below a threshold given by
-        `density`, a star is initialized at those coordinates, by using the `skysource.SkySource` class.
-
-        The auxiliary field is, then, cropped to obtain the actual field on the CCD. Also, in the `Field.sources`
-        attribute the stars belonging to the padding area are deleted. This is to simulate their existence (and
-        effect on the field when psf are taken into account) but without being able to measure their distance from
-        the exposed field.
-
-        There are three possible settings for the field initialization as `datatype`: 'luminosity', 'mass' and
-        'magnitude', where the last two are mainly for debugging reasongs. Every step of the simulation, indeed,
-        require the `datatype` to be 'luminosity', as defined in `utils.DataType` class.
+        There are three possible settings for the field initialization as
+        `datatype`: 'luminosity', 'mass' and 'magnitude', where the last two are
+        mainly for debugging reasongs. Every step of the simulation, indeed,
+        require the `datatype` to be 'luminosity', as defined in
+        `utils.DataType` class.
 
         Parameters
         ----------
         density: `number` in [0, 1]
             Expected number density of stars in the field. Default is `0.05`.
         e_imf: `number`
-            Exponent of the IMF powerlaw, to be passed to the `skysource.SkySource.random_cimf` method. Default is
-            `2.4`.
+            Exponent of the IMF powerlaw, to be passed to the
+            `skysource.SkySource.random_cimf` method. Default is `2.4`.
         e_lm: `number`
-            Exponent of the mass-luminosity relation powerlaw, to be passed to the `skysource.SkySource.lm_relation`
-            method. Default is `3`.
+            Exponent of the mass-luminosity relation powerlaw, to be passed to
+            the `skysource.SkySource.lm_relation` method. Default is `3`.
         cst_lm: `number`
-            Factor in front of the mass-luminosity relation powerlaw, to be passed to the
-            `skysource.SkySource.lm_relation` method. Default is `1`.
+            Factor in front of the mass-luminosity relation powerlaw, to be
+            passed to the `skysource.SkySource.lm_relation` method. Default is
+            `1`.
         seed: `int` or `None`
-            If of type `int`, passes the seed to the pseudo-random number generator of numpy. If `None`,
-            numpy generates a seed by itself. Default is `None`.
+            If of type `int`, passes the seed to the pseudo-random number
+            generator of numpy. If `None`, numpy generates a seed by itself.
+            Default is `None`.
         datatype: `'luminosity'`, `'mass'` or `'magnitude'`
-            Defines the datatype represented in the field. Default is `'luminosity'`.
+            Defines the datatype represented in the field. Default is
+            `'luminosity'`.
         force: `bool`
-            Flag to force re-initialization of the field if it had already been initialized. Default is `False`.
+            Flag to force re-initialization of the field if it had already been
+            initialized. Default is `False`.
 
         Raises
         ------
         `TypeError`:
-            If `datatype` is not a string or if `force` is not a `bool` or if `seed` is not an `int` or `None`.
+            If `datatype` is not a string or if `force` is not a `bool` or if
+            `seed` is not an `int` or `None`.
         `ValueError`:
             If `datatype` is not `'luminosity'`, `'mass'` or `'magnitude'`.
         `FieldAlreadyInitializedWarning`:
-            If the field has been previously initialized. Execution is not halted, but the field is not updated.
+            If the field has been previously initialized. Execution is not
+            halted, but the field is not updated.
 
         Examples
         --------
-        >>> # Initializes a field with a Salpeter IMF and a Main-Sequence L-M relation but with enhanced luminosity.
-        >>> # The density of stars has been set to the 2%. The data that will be represented in the field is in units of
-        >>> # luminosity.
-        >>> fld.initialize_field(density=0.02, e_imf=2.4, e_lm=3, cst_lm=100, datatype='luminosity')
+        >>> # Initializes a field with a Salpeter IMF and a Main-Sequence L-M
+        >>> # relation but with enhanced luminosity. The density of stars has
+        >>> # been set to the 2%. The data that will be represented in the field
+        >>> # is in units of luminosity.
+        >>> fld.initialize_field(
+        >>>     density=0.02, e_imf=2.4, e_lm=3, cst_lm=100,
+        >>>     datatype='luminosity')
 
         See Also
         --------
         `skysource.SkySource`, `utils.DataType`.
         """
         if not isinstance(seed, int) and seed is not None:
-            raise TypeError("`seed` argument must be either an `int` or `None`.")
+            raise TypeError("`seed` argument must be either an `int` or"
+                            "`None`.")
 
         if not isinstance(datatype, str):
             raise TypeError("`datatype` argument must be a string.")
         elif datatype not in ['luminosity', 'magnitude', 'mass']:
-            raise ValueError("`datatype` argument must be \"luminosity\", \"magnitude\" or \"mass\".")
+            raise ValueError("`datatype` argument must be \"luminosity\", "
+                             "\"magnitude\" or \"mass\".")
 
         if not isinstance(force, bool):
             raise TypeError("`force` argument must be a bool.")
 
         if self.__initialized and not force:
-            warnings.warn("Field already initialized, use `force=True` argument to force re-initialization.",
+            warnings.warn("Field already initialized, use `force=True` argument"
+                          " to force re-initialization.",
                           FieldAlreadyInitializedWarning)
         elif not self.__initialized or force:
             rng = np.random.default_rng(seed=seed)
 
             # Generation of the auxiliary field
-            aux_shape = (self.shape[0] + 2 * self.__pad[0], self.shape[1] + 2 * self.__pad[1])
+            aux_shape = (
+                self.shape[0] + 2 * self.__pad[0],
+                self.shape[1] + 2 * self.__pad[1])
             self.__aux_field = np.zeros(aux_shape)
 
             # Random generation of the stars
@@ -191,33 +216,42 @@ class Field:
             stars_coords_arr = np.argwhere(rand_distribution <= density)
 
             # Saving the sources and randomly generating their masses
-            self.sources = np.array([SkySource(coords).initialize(e_imf, e_lm, cst_lm, rng=rng) for coords in
-                                     stars_coords_arr])
+            self.sources = np.array([
+                SkySource(coords).initialize(e_imf, e_lm, cst_lm, rng=rng)
+                for coords in stars_coords_arr])
             self.true_field = np.zeros(self.shape)
 
             self.datatype = getattr(DataType(), datatype.upper())
 
             if self.datatype == DataType().LUMINOSITY:
                 for source in self.sources:
-                    self.__aux_field[source.coords[0], source.coords[1]] = source.luminosity
+                    self.__aux_field[
+                        source.coords[0], source.coords[1]] = source.luminosity
             elif self.datatype == DataType().MAGNITUDE:
                 for source in self.sources:
-                    self.__aux_field[source.coords[0], source.coords[1]] = source.magnitude
+                    self.__aux_field[
+                        source.coords[0], source.coords[1]] = source.magnitude
             elif self.datatype == DataType().MASS:
                 for source in self.sources:
-                    self.__aux_field[source.coords[0], source.coords[1]] = source.mass
+                    self.__aux_field[
+                        source.coords[0], source.coords[1]] = source.mass
 
             # Cropping of the auxiliary field, to obtain the CCD image
-            self.true_field = self.__aux_field[self.__pad[0]:-self.__pad[0], self.__pad[1]:-self.__pad[1]]
+            self.true_field = self.__aux_field[
+                              self.__pad[0]:-self.__pad[0],
+                              self.__pad[1]:-self.__pad[1]]
+
             # Max signal in the cropped field is saved, to use it at background generation with the SNR
-            self.max_signal_coords = np.unravel_index(np.argmax(self.true_field), self.shape)
+            self.max_signal_coords = np.unravel_index(
+                np.argmax(self.true_field), self.shape)
 
             # Deleting the sources outside the CCD image from the list
             for source in self.sources:
                 source.coords[0] -= self.__pad[0]
                 source.coords[1] -= self.__pad[1]
 
-            src_copy = filter(lambda x: (0 <= x.coords[0] < self.shape[0] and 0 <= x.coords[1] < self.shape[1]),
+            src_copy = filter(lambda x: (0 <= x.coords[0] < self.shape[0] and
+                                         0 <= x.coords[1] < self.shape[1]),
                               self.sources)
 
             self.sources = np.array(list(src_copy))
@@ -245,53 +279,63 @@ class Field:
         if self.status != ImageStatus().SINGLESTARS:
             raise IncompatibleStatusError
         if self.datatype == DataType().LUMINOSITY:
-            warnings.warn("`datatype` is already set to `\"luminosity\"`.", CorrectDataTypeWarning)
+            warnings.warn("`datatype` is already set to `\"luminosity\"`.",
+                          CorrectDataTypeWarning)
         if not self.__initialized:
             raise NotInitializedError
 
         for source in self.sources:
-            self.__aux_field[source.coords[0], source.coords[1]] = source.luminosity
+            self.__aux_field[source.coords[0], source.coords[1]] = \
+                source.luminosity
 
         self.datatype = DataType().LUMINOSITY
 
     def add_photon_noise(self, delta_time=1, force=False, multiply=False):
         """
-        Method that applies photon fluctuations to the luminosity of stars in the field.
+        Method that applies photon fluctuations to the luminosity of stars in
+        the field.
 
-        The auxiliary field from the initialization is multiplied by `delta_time`, used to simulate longer (or shorter)
-        exposures this is used to create another auxiliary field for the photon noise. These values are used as the mean
-        values of a random poisson number generator.
+        The auxiliary field from the initialization is multiplied by
+        `delta_time`, used to simulate longer (or shorter) exposures this is
+        used to create another auxiliary field for the photon noise. These
+        values are used as the mean values of a random poisson number generator.
 
-        Any negative number is, then, set to zero and the auxiliary field is cropped again and saved in the
-        `w_ph_noise_field` attribute.
+        Any negative number is, then, set to zero and the auxiliary field is
+        cropped again and saved in the `w_ph_noise_field` attribute.
 
         Parameters
         ----------
         delta_time: `number` > 0
             Factor that represents a longer or shorter exposure. Default is `1`.
         force: `bool`
-            Flag to force re-initialization of the field if it had already been initialized. Default is `False`.
+            Flag to force re-initialization of the field if it had already been
+            initialized. Default is `False`.
         multiply: `bool`
-            Flag to force every star in the field to have a luminosity value at least greater than 1. If `True`,
-            the minimum exponent of the field is evaluated and the whole field is multiplied by this order of magnitude.
+            Flag to force every star in the field to have a luminosity value at
+            least greater than 1. If `True`, the minimum exponent of the field
+            is evaluated and the whole field is multiplied by this order of
+            magnitude.
 
         Raises
         ------
         `TypeError`:
-            If `delta_time` is not a number, or if `force` or `multiply` are not `bool`.
+            If `delta_time` is not a number, or if `force` or `multiply` are not
+            `bool`.
         `ValueError`:
             If `delta_time` is less or equal to 0.
         `NotInitializedError`:
             If the field has not been initialized, yet.
         `UnexpectedDatatypeError`:
-            If the `self.datatype` attribute is not equal to `utils.DataType().LUMINOSITY`.
+            If the `self.datatype` attribute is not equal to
+            `utils.DataType().LUMINOSITY`.
         `FieldAlreadyInitializedWarning`:
-            If the field has been previously initialized. Execution is not halted, but the field is not updated.
+            If the field has been previously initialized. Execution is not
+            halted, but the field is not updated.
 
         Examples
         --------
-        >>> # Simulation of the photon noise for a field, supposing an exposition time 100 times longer than the
-        >>> # default.
+        >>> # Simulation of the photon noise for a field, supposing an
+        >>> # exposition time 100 times longer than the default.
         >>> fld.add_photon_noise(delta_time=100)
         """
         if not isinstance(delta_time, (int, float)):
@@ -309,37 +353,52 @@ class Field:
             raise UnexpectedDatatypeError
 
         if self.__ph_noise and not force:
-            warnings.warn("Field already has photon noise, use `force=True` argument to force photon noise again.",
+            warnings.warn("Field already has photon noise, use `force=True` "
+                          "argument to force photon noise again.",
                           FieldAlreadyInitializedWarning)
         elif not self.__ph_noise or force:
             rng = np.random.default_rng()
 
-            # Generating the auxiliary fields and simulating exposure time variation with `delta_time`
+            # Generating the auxiliary fields and simulating exposure time
+            # variation with `delta_time`
             exposed_true_field = self.__aux_field * delta_time
             self.__aux_w_ph_noise = np.zeros(self.__aux_field.shape)
 
-            if exposed_true_field[np.nonzero(exposed_true_field)].min() <= 1 and multiply:
-                warnings.warn("Field is being multiplied by a constant so that the lowest luminosity star is at least \
-                 \nabove 1 before adding photon noise fluctuations.",
+            if exposed_true_field[np.nonzero(exposed_true_field)].min() <= 1\
+                    and multiply:
+                warnings.warn("Field is being multiplied by a constant so that"
+                              "the lowest luminosity star is at least above 1 "
+                              "before adding photon noise fluctuations.",
                               LowLuminosityWarning)
                 # Simulation if all luminosities have been set as >= 1.
-                min_luminosity = exposed_true_field[np.nonzero(exposed_true_field)].min()
+                min_luminosity = exposed_true_field[
+                    np.nonzero(exposed_true_field)].min()
                 min_exponent = - np.floor(np.log10(min_luminosity))
 
                 self.__aux_w_ph_noise = exposed_true_field * 10 ** min_exponent
 
-                # Poisson generation of photon noise arount the (integer) luminosity of the star as mean
-                self.__aux_w_ph_noise = np.where(self.__aux_w_ph_noise > 0, rng.poisson(self.__aux_w_ph_noise), 0)
+                # Poisson generation of photon noise arount the (integer)
+                # luminosity of the star as mean
+                self.__aux_w_ph_noise = np.where(
+                    self.__aux_w_ph_noise > 0,
+                    rng.poisson(self.__aux_w_ph_noise), 0)
             else:
-                # Simulation if all luminosities have been left as after exposure time simulation.
+                # Simulation if all luminosities have been left as after
+                # exposure time simulation.
                 self.__aux_w_ph_noise = exposed_true_field
-                # Poisson generation of photon noise arount the (integer) luminosity of the star as mean
-                self.__aux_w_ph_noise = np.where(self.__aux_w_ph_noise > 0, rng.poisson(self.__aux_w_ph_noise), 0)
+                # Poisson generation of photon noise arount the (integer)
+                # luminosity of the star as mean
+                self.__aux_w_ph_noise = np.where(
+                    self.__aux_w_ph_noise > 0,
+                    rng.poisson(self.__aux_w_ph_noise), 0)
 
-            self.__aux_w_ph_noise = np.where(self.__aux_w_ph_noise < 0, 0, self.__aux_w_ph_noise)
+            self.__aux_w_ph_noise = np.where(
+                self.__aux_w_ph_noise < 0, 0, self.__aux_w_ph_noise)
 
             # Crop of the field
-            self.w_ph_noise_field = self.__aux_w_ph_noise[self.__pad[0]:-self.__pad[0], self.__pad[1]:-self.__pad[1]]
+            self.w_ph_noise_field = self.__aux_w_ph_noise[
+                                    self.__pad[0]:-self.__pad[0],
+                                    self.__pad[1]:-self.__pad[1]]
             self.status = ImageStatus().PH_NOISE
             self.__ph_noise = True
 
@@ -347,50 +406,63 @@ class Field:
         """
         Method that generates a background for the field.
 
-        This works both if the simulation of the photon noise (see `Field.add_photon_noise`) has been added or not.
+        This works both if the simulation of the photon noise (see
+        `Field.add_photon_noise`) has been added or not.
 
-        In case the photon noise has been generated, the background is generated starting from its corresponding
-        auxiliary field, otherwise the base auxiliary field is used. This method looks for the brightest object in the
-        field (whose location had been saved at initialization, see `Field.initialize_field`) and scaled down by the
-        indicated Signal to Noise Ratio `snr`.
+        In case the photon noise has been generated, the background is generated
+        starting from its corresponding auxiliary field, otherwise the base
+        auxiliary field is used. This method looks for the brightest object in
+        the field (whose location had been saved at initialization, see
+        `Field.initialize_field`) and scaled down by the indicated Signal to
+        Noise Ratio `snr`.
 
-        In every pixel of an auxiliary field larger than the actual CCD field the noise is generated with a random
-        gaussian number generator. The mean of the noise is set as described before, while the standard deviation is
-        determined from its relative value `rel_var`.
+        In every pixel of an auxiliary field larger than the actual CCD field
+        the noise is generated with a random gaussian number generator. The mean
+        of the noise is set as described before, while the standard deviation
+        is determined from its relative value `rel_var`.
 
-        Any negative number is, then, set to zero and the auxiliary field is cropped again and saved in the
-        `w_background_field` attribute.
+        Any negative number is, then, set to zero and the auxiliary field is
+        cropped again and saved in the `w_background_field` attribute.
 
         Parameters
         ----------
         fluct: `str`
-            Distribution that the background follows. At the moment is a placeholder, since it is always set as a
-            gaussian. Default is `'gaussian'`.
+            Distribution that the background follows. At the moment is a
+            placeholder, since it is always set as a gaussian. Default is
+            `'gaussian'`.
         snr: `number` > 0
-            Estimate of the Signal to Noise Ratio, used to generate the background. Default is `10`.
+            Estimate of the Signal to Noise Ratio, used to generate the
+            background. Default is `10`.
         rel_var: `number` in [0, 1]
-            Relative dispersion of the background distribution. It is used to determine the standard deviation of a
-            gaussian background. Default is `0.05`.
+            Relative dispersion of the background distribution. It is used to
+            determine the standard deviation of a gaussian background. Default
+            is `0.05`.
         force: `bool`
-            Flag to force re-initialization of the field if it had already been initialized. Default is `False`.
+            Flag to force re-initialization of the field if it had already been
+            initialized. Default is `False`.
 
         Raises
         ------
         `TypeError`:
-            If `fluct` is not a string, if `snr` or `rel_var` are not `numbers` or if `force` is not `bool`.
+            If `fluct` is not a string, if `snr` or `rel_var` are not `numbers`
+            or if `force` is not `bool`.
         `ArgumentError`:
-            If `fluct` is not `'gauss'`. This is the only allowed value, at the moment.
+            If `fluct` is not `'gauss'`. This is the only allowed value, at the
+            moment.
         `NotInitializedError`:
             If the field has not been initialized, yet.
         `UnexpectedDatatypeError`:
-            If the `self.datatype` attribute is not equal to `utils.DataType().LUMINOSITY`.
+            If the `self.datatype` attribute is not equal to
+            `utils.DataType().LUMINOSITY`.
         `FieldAlreadyInitializedWarning`:
-            If the field has been previously initialized. Execution is not halted, but the field is not updated.
+            If the field has been previously initialized. Execution is not
+            halted, but the field is not updated.
 
         Examples
         --------
-        >>> # Simulation of a low signal field (SNR of brightes star is 5) and a larger standard deviation from the
-        >>> # mean: a relative dispersion of 10% from the mean of the background.
+        >>> # Simulation of a low signal field (SNR of brightes star is 5) and a
+        >>> # larger standard deviation from the mean: a relative dispersion of
+        >>> # 10% from the mean of the background.
         >>> fld.add_background(snr=5, rel_var=0.1)
 
         See Also
@@ -398,7 +470,8 @@ class Field:
         `Field.initialize_field` and `Field.add_photon_noise`.
         """
         if not isinstance(fluct, (str, float, int)):
-            raise TypeError('`fluct` argument must be either a string or a number.')
+            raise TypeError('`fluct` argument must be either a string or a '
+                            'number.')
         if isinstance(fluct, str) and fluct not in ['gauss']:
             raise ArgumentError
 
@@ -421,7 +494,8 @@ class Field:
             raise UnexpectedDatatypeError
 
         if self.__background and not force:
-            warnings.warn("Field already has background, use `force=True` argument to force background again.",
+            warnings.warn("Field already has background, use `force=True` "
+                          "argument to force background again.",
                           FieldAlreadyInitializedWarning)
         elif not self.__background or force:
             rng = np.random.default_rng()
@@ -429,25 +503,33 @@ class Field:
             self.__aux_w_background = np.zeros(self.__aux_field.shape)
 
             if self.__ph_noise:
-                # Generation of background with a normal distribution of mean given by the max value in the field
+                # Generation of background with a normal distribution of mean
+                # given by the max value in the field
                 # divided by the SNR.
                 loc = self.w_ph_noise_field[self.max_signal_coords] / snr
                 scale = rel_var * loc
 
-                self.__aux_w_background = self.__aux_w_ph_noise + rng.normal(loc, scale, self.__aux_w_ph_noise.shape)
+                self.__aux_w_background = \
+                    self.__aux_w_ph_noise + \
+                    rng.normal(loc, scale, self.__aux_w_ph_noise.shape)
             else:
-                # Generation of background with a normal distribution of mean given by the max value in the field
+                # Generation of background with a normal distribution of mean
+                # given by the max value in the field
                 # divided by the SNR.
                 loc = self.true_field[self.max_signal_coords] / snr
                 scale = rel_var * loc
 
-                self.__aux_w_background = self.__aux_field + rng.normal(loc, scale, self.__aux_field.shape)
+                self.__aux_w_background = \
+                    self.__aux_field + \
+                    rng.normal(loc, scale, self.__aux_field.shape)
 
-            self.__aux_w_background = np.where(self.__aux_w_background < 0, 0, self.__aux_w_background)
+            self.__aux_w_background = np.where(
+                self.__aux_w_background < 0, 0, self.__aux_w_background)
 
             # Crop of the auxiliary field.
-            self.w_background_field = self.__aux_w_background[self.__pad[0]:-self.__pad[0],
-                                                              self.__pad[1]:-self.__pad[1]]
+            self.w_background_field = \
+                self.__aux_w_background[self.__pad[0]:-self.__pad[0],
+                                        self.__pad[1]:-self.__pad[1]]
 
             self.__snr_background = snr
             self.__std_background = scale
@@ -460,28 +542,35 @@ class Field:
         """
         Method that applies a Point Spread Function (psf) to the field.
 
-        This method creates an auxiliary field larger than the CCD's field (see also the `Field.initialize_field`
-        method) from the `w_background_field` attribute, if available. If not, it first looks for the `w_ph_noise_field`
-        attribute and, eventually, applies the psf to the base field.
+        This method creates an auxiliary field larger than the CCD's field (see
+        also the `Field.initialize_field` method) from the `w_background_field`
+        attribute, if available. If not, it first looks for the
+        `w_ph_noise_field` attribute and, eventually, applies the psf to the
+        base field.
 
-        Convolution is made with the `scipy.signal.convolve2d` function, setting the mode as `'same'`. The
-        operation is done over the selected auxiliary field and a kernel from `psf.kernels` kernel or a user-defined
-        `psf.Kernel` object. This creates a field that has the same dimensions of the larger between the auxiliary field
-        and the kernel, but has some artifacts due to boundary effects. To avoid artifacts due to zero condition
-        boundaries or to interpolation, all the simulations are done on a way larger area that will, indeed, have
-        artifacts, but the actual field is obtained after cropping the auxiliary field. This also allows for a further
-        level of simulation, in which sources (or background) which is not on the CCD can actually have an effect over
-        the recorded exposure.
+        Convolution is made with the `scipy.signal.convolve2d` function, setting
+        the mode as `'same'`. The operation is done over the selected auxiliary
+        field and a kernel from `psf.kernels` kernel or a user-defined
+        `psf.Kernel` object. This creates a field that has the same dimensions
+        of the larger between the auxiliary field and the kernel, but has some
+        artifacts due to boundary effects. To avoid artifacts due to zero
+        condition boundaries or to interpolation, all the simulations are done
+        on a way larger area that will, indeed, have artifacts, but the actual
+        field is obtained after cropping the auxiliary field. This also allows
+        for a further level of simulation, in which sources (or background)
+        which is not on the CCD can actually have an effect over the recorded
+        exposure.
 
-        Any negative number is, then, set to zero and the auxiliary field is cropped again and saved in the
-        `w_psf_field` attribute.
+        Any negative number is, then, set to zero and the auxiliary field is
+        cropped again and saved in the `w_psf_field` attribute.
 
         Parameters
         ----------
         kernel: `fieldsim.psf.Kernel`
             Kernel of the point spread function. See `fieldsim.psf.Kernel`.
         force: `bool`
-            Flag to force re-initialization of the field if it had already been initialized. Default is `False`.
+            Flag to force re-initialization of the field if it had already been
+            initialized. Default is `False`.
 
         Raises
         ------
@@ -490,7 +579,8 @@ class Field:
         `NotInitializedError`:
             If the field has not been initialized, yet.
         `FieldAlreadyInitializedWarning`:
-            If the field has been previously initialized. Execution is not halted, but the field is not updated.
+            If the field has been previously initialized. Execution is not
+            halted, but the field is not updated.
 
         Examples
         --------
@@ -502,34 +592,43 @@ class Field:
 
         See Also
         --------
-        `psf.Kernel`, `Field.initialize_field` and `Field.add_photon_noise`. See also `scipy.signal.convolve2d`
+        `psf.Kernel`, `Field.initialize_field` and `Field.add_photon_noise`.
+        See also `scipy.signal.convolve2d`
         documentation.
         """
         if not isinstance(kernel, Kernel):
-            raise TypeError('`kernel` argument must be an instance of `fieldsim.psf.Kernel` class.')
+            raise TypeError('`kernel` argument must be an instance of '
+                            '`fieldsim.psf.Kernel` class.')
 
         if not self.__initialized:
             raise NotInitializedError
 
         if self.__psf and not force:
-            warnings.warn("Field has already been convolved with a psf, use `force=True` argument to force psf again.",
+            warnings.warn("Field has already been convolved with a psf, use "
+                          "`force=True` argument to force psf again.",
                           FieldAlreadyInitializedWarning)
         elif not self.__psf or force:
             self.__aux_w_psf = np.zeros(self.__aux_field.shape)
 
-            # Applying the psf kernel convolution on the auxiliary field corresponding on the actual datatyoe of the
-            # simulation.
+            # Applying the psf kernel convolution on the auxiliary field
+            # corresponding on the actual datatype of the simulation.
             if not self.__ph_noise and not self.__background:
-                self.__aux_w_psf = scipysig.convolve2d(self.__aux_field, kernel.kernel, mode='same')
+                self.__aux_w_psf = scipysig.convolve2d(
+                    self.__aux_field, kernel.kernel, mode='same')
             elif self.__ph_noise and not self.__background:
-                self.__aux_w_psf = scipysig.convolve2d(self.__aux_w_ph_noise, kernel.kernel, mode='same')
+                self.__aux_w_psf = scipysig.convolve2d(
+                    self.__aux_w_ph_noise, kernel.kernel, mode='same')
             elif self.__background:
-                self.__aux_w_psf = scipysig.convolve2d(self.__aux_w_background, kernel.kernel, mode='same')
+                self.__aux_w_psf = scipysig.convolve2d(
+                    self.__aux_w_background, kernel.kernel, mode='same')
 
-            self.__aux_w_psf = np.where(self.__aux_w_psf < 0, 0, self.__aux_w_psf)
+            self.__aux_w_psf = np.where(
+                self.__aux_w_psf < 0, 0, self.__aux_w_psf)
 
             # Crop of the field.
-            self.w_psf_field = self.__aux_w_psf[self.__pad[0]:-self.__pad[0], self.__pad[1]:-self.__pad[1]]
+            self.w_psf_field = self.__aux_w_psf[
+                               self.__pad[0]:-self.__pad[0],
+                               self.__pad[1]:-self.__pad[1]]
 
             self.__sigma_x_psf = kernel.width_x
             self.__sigma_y_psf = kernel.width_y
@@ -540,12 +639,14 @@ class Field:
         """
         Method that creates a gain map for the simulated CCD.
 
-        This method creates a gain map for the CCD and stores it into the `Field.gain_map` attribute. Simulation is
-        done with a random gaussian number generator, frum numpy, with mean set from `mean_gain` and `rel_var` used
-        to derive the standard deviation of the distribution.
+        This method creates a gain map for the CCD and stores it into the
+        `Field.gain_map` attribute. Simulation is done with a random gaussian
+        number generator, frum numpy, with mean set from `mean_gain` and
+        `rel_var` used to derive the standard deviation of the distribution.
 
-        Ideally, this method should be called only once, since it simulates the differences in the production of each
-        pixel, that do not fluctuate from observation to observation.
+        Ideally, this method should be called only once, since it simulates the
+        differences in the production of each pixel, that do not fluctuate from
+        observation to observation.
 
         Any pixel whose gain is negative, has gain set to zero.
 
@@ -556,16 +657,19 @@ class Field:
         rel_var: `number` >= 0
             Relative dispersion of the gain of the CCD. Default is 0.01.
         force: `bool`
-            Flag to force re-initialization of the field if it had already been initialized. Default is `False`.
+            Flag to force re-initialization of the field if it had already been
+            initialized. Default is `False`.
 
         Raises
         ------
         `TypeError`:
-            If `mean_gain` or `rel_var` are not numbers or if `force` is not a `bool`.
+            If `mean_gain` or `rel_var` are not numbers or if `force` is not a
+            `bool`.
         `ValueError`:
             If `mean_gain` or `rel_var` are negative.
         `FieldAlreadyInitializedWarning`:
-            If the gain map had been previously initialized. Execution is not halted, but the gain map is not updated.
+            If the gain map had been previously initialized. Execution is not
+            halted, but the gain map is not updated.
 
         Examples
         --------
@@ -586,13 +690,17 @@ class Field:
             raise TypeError('`force` argument must be a bool.')
 
         if self.__has_gain_map and not force:
-            warnings.warn("A gain map already exists, use `force=True` argument to force gain map generation again.",
+            warnings.warn("A gain map already exists, use `force=True` argument"
+                          " to force gain map generation again.",
                           FieldAlreadyInitializedWarning)
         elif not self.__has_gain_map or force:
             rng = np.random.default_rng()
 
-            # Creation of the gain map of the CCD as a normal distribution centered on `mean_gain`.
-            self.gain_map = rng.normal(mean_gain, rel_var * mean_gain, self.shape)
+            # Creation of the gain map of the CCD as a normal distribution
+            # centered on `mean_gain`.
+            self.gain_map = rng.normal(mean_gain,
+                                       rel_var * mean_gain,
+                                       self.shape)
 
             self.gain_map = np.where(self.gain_map < 0, 0, self.gain_map)
             self.__mean_gain = mean_gain
@@ -600,47 +708,55 @@ class Field:
             self.__rel_var_gain = rel_var
             self.__has_gain_map = True
 
-    def create_dark_current(self, b_fraction=0.1, rel_var=0.01, dk_c=None, force=False):
+    def create_dark_current(self,
+                            b_fraction=0.1, rel_var=0.01,
+                            dk_c=None, force=False):
         """
         Method that simulates a dark current inside the CCD.
 
-        This method works either after having simulated a background or by manual injection of the mean value. If a
-        background has been generated and `dk_c` is `None`, this method reads a private attribute containing the mean
-        value of the background and determines the mean of the dark current by calculating:
+        This method works either after having simulated a background or by
+        manual injection of the mean value. If a background has been generated
+        and `dk_c` is `None`, this method reads a private attribute containing
+        the mean value of the background and determines the mean of the dark
+        current by calculating:
 
             dark_current_mean = b_fraction * Field.__mean_background
 
-        If, on the other hand, the background isn't available or `dk_c` is not `None`, the dark current mean value is
-        set from the `dk_c` argument.
+        If, on the other hand, the background isn't available or `dk_c` is not
+        `None`, the dark current mean value is set from the `dk_c` argument.
 
         Parameters
         ----------
         b_fraction: `number` >= 0
-            Fraction of the mean background to be set as mean for the distribution of the dark current of the CCD.
+            Fraction of the mean background to be set as mean for the
+            distribution of the dark current of the CCD.
             Default is 0.1 (optional).
         rel_var: `number` >= 0
             Relative dispersion of the dark current of the CCD. Default is 0.01.
         dk_c: `number` >= 0 or `None`
-            Mean value of the dark current of the CCD, if no background is available or to override its value.
+            Mean value of the dark current of the CCD, if no background is
+            available or to override its value.
             Default is `None` (optional).
         force: `bool`
-            Flag to force re-initialization of the field if it had already been initialized. Default is `False`.
+            Flag to force re-initialization of the field if it had already been
+            initialized. Default is `False`.
 
         Raises
         ------
         `TypeError`:
-            If `b_fraction`, `rel_var` are not numbers or if `force` is not a `bool` or if `dk_c` is neither a number
-            nor `None`.
+            If `b_fraction`, `rel_var` are not numbers or if `force` is not a
+            `bool` or if `dk_c` is neither a number nor `None`.
         `ValueError`:
-            If `b_fraction`, `rel_var` or `dk_c` are negative or if no background has been generated and `dk_c` is None.
+            If `b_fraction`, `rel_var` or `dk_c` are negative or if no
+            background has been generated and `dk_c` is None.
         `FieldAlreadyInitializedWarning`:
-            If the dark current had been previously simulated. Execution is not halted, but the dark current is not
-            updated.
+            If the dark current had been previously simulated. Execution is not
+            halted, but the dark current is not updated.
 
         Examples
         --------
-        >>> # This call simulates a dark current with a mean value equal to 10% of the mean background and a relative
-        >>> # dispersion of 5%.
+        >>> # This call simulates a dark current with a mean value equal to 10%
+        >>> # of the mean background and a relative dispersion of 5%.
         >>> fld.create_dark_current(b_fraction=0.1, rel_var=5e-3)
 
         See Also
@@ -660,7 +776,8 @@ class Field:
         if not isinstance(dk_c, (int, float)) and dk_c is not None:
             raise TypeError('`dk_c` must be a number or `None`.')
         elif not self.__background and dk_c is None:
-            raise ValueError('If no background has been generated, `dk_c` must be a number.')
+            raise ValueError('If no background has been generated, `dk_c` must '
+                             'be a number.')
         elif isinstance(dk_c, (int, float)) and dk_c < 0:
             raise ValueError('`dk_c` cannot be less than zero.')
 
@@ -668,20 +785,24 @@ class Field:
             raise TypeError('`force` argument must be a bool.')
 
         if self.__has_dark_current and not force:
-            warnings.warn("Dark current has already been generated, use `force=True` argument to force dark current \
-             \ngeneration again.", FieldAlreadyInitializedWarning)
+            warnings.warn("Dark current has already been generated, use "
+                          "`force=True` argument to force dark current "
+                          "generation again.", FieldAlreadyInitializedWarning)
         elif not self.__has_dark_current or force:
             rng = np.random.default_rng()
 
             if self.__background and dk_c is None:
-                # If the background has been simulated, the dark current's mean is a fraction of the used mean
-                # background.
+                # If the background has been simulated, the dark current's mean
+                # is a fraction of the used mean background.
                 dark_current_mean = b_fraction * self.__mean_background
             else:
-                # If the background is absent, the dark current is generated with a given mean.
+                # If the background is absent, the dark current is generated
+                # with a given mean.
                 dark_current_mean = dk_c
 
-            self.dark_current = rng.normal(dark_current_mean, rel_var * dark_current_mean, self.shape)
+            self.dark_current = rng.normal(dark_current_mean,
+                                           rel_var * dark_current_mean,
+                                           self.shape)
             self.__mean_dk_c = dark_current_mean
             self.__std_dk_c = rel_var * dark_current_mean
             self.__rel_var_dk_c = rel_var
@@ -694,8 +815,9 @@ class Field:
 
         Available `field` types are:
             - 'true':
-                Plots the field of stars as they are outside the atmosphere. Note that this allows to print also the
-                'mass' and 'magnitude' datatypes.
+                Plots the field of stars as they are outside the atmosphere.
+                Note that this allows to print also the 'mass' and 'magnitude'
+                datatypes.
             - 'ph_noise':
                 Plots the field for which the photon noise has been simulated.
             - 'background':
@@ -703,23 +825,27 @@ class Field:
             - 'psf':
                 Plots the field convolved with the psf kernel of choice.
             - 'exposure':
-                Plots the complete field after an observation, so with the combined effects of gain and dark current.
+                Plots the complete field after an observation, so with the
+                combined effects of gain and dark current.
             - 'gain_map':
                 Plots the gain map of the CCD.
             - 'dark_current':
                 Plots the dark current over the CCD.
 
-        Note that, to make the images coherent with the coordinates saved inside the `skysource.SkySource` objects,
-        plots actually represent the transposed fields. You should apply `np.transpose` method to the field if you
-        wished to obtain the same fields separately.
+        Note that, to make the images coherent with the coordinates saved inside
+        the `skysource.SkySource` objects, plots actually represent the
+        transposed fields. You should apply `np.transpose` method to the field
+        if you wished to obtain the same fields separately.
 
         Parameters
         ----------
-        field: `str` in ['true', 'ph_noise', 'background', 'psf', 'exposure', 'gain_map', 'dark_current']
+        field: `str` in ['true', 'ph_noise', 'background', 'psf', 'exposure',
+        'gain_map', 'dark_current']
             The type of field to be plotted.
         mode: `str` either `'log'` or `'lin'`
-            If the image has data type `LUMINOSITY` or `MASS`, it allows to represent the base 10 logarithm of the
-            image itself, rather than the linear representation. Default is `'log'`.
+            If the image has data type `LUMINOSITY` or `MASS`, it allows to
+            represent the base 10 logarithm of the image itself, rather than the
+            linear representation. Default is `'log'`.
 
         Returns
         -------
@@ -732,23 +858,27 @@ class Field:
         `ValueError`:
             If `field` or `mode` are not in the aforementioned lists.
         `FieldAlreadyInitializedWarning`:
-            If the dark current had been previously simulated. Execution is not halted, but the dark current is not
+            If the dark current had been previously simulated. Execution is not
+            halted, but the dark current is not
             updated.
 
         See Also
         --------
-        `Field.initialize_field`, `Field.add_photon_noise`, `Field.add_background`, `Field.apply_psf`,
-        `Field.create_gain_map`, `Field.create_dark_current`, `utils.DataType` and `numpy.transpose`.
+        `Field.initialize_field`, `Field.add_photon_noise`,
+        `Field.add_background`, `Field.apply_psf`, `Field.create_gain_map`,
+        `Field.create_dark_current`, `utils.DataType` and `numpy.transpose`.
         """
         if not isinstance(field, str):
             raise TypeError('`field` argument must be a string.')
         elif isinstance(field, str) and field not in self.__valid_fields:
-            raise ValueError('`field` argument not in accepted list of valid fields.')
+            raise ValueError('`field` argument not in accepted list of valid '
+                             'fields.')
 
         if not isinstance(mode, str):
             raise TypeError('`mode` argument must be a string.')
         elif isinstance(mode, str) and mode not in ['log', 'lin']:
-            raise ValueError('`mode` argument not in accepted list of valid mode.')
+            raise ValueError('`mode` argument not in accepted list of valid '
+                             'mode.')
 
         image = getattr(self, self.__attributes[field])
 
@@ -775,11 +905,13 @@ class Field:
         """
         Method that simulates the observation of a field.
 
-        This method runs all the simulation steps one after another, with the initial parameters defined inside the
-        arguments. If a gain map is still available another one CANNOT be generated from here, but must be manually
-        generated with the appropriate method (See `Field.create_gain_map` method). Calling `G` the gain map,
-        `F` the field convoluted with the psf kernel and `Id` the dark current of the CCD, the complete field is
-        found as:
+        This method runs all the simulation steps one after another, with the
+        initial parameters defined inside the arguments. If a gain map is still
+        available another one CANNOT be generated from here, but must be
+        manually generated with the appropriate method (See
+        `Field.create_gain_map` method). Calling `G` the gain map, `F` the field
+        convoluted with the psf kernel and `Id` the dark current of the CCD, the
+        complete field is found as:
 
             Field.recorded_field = G * S + Id
 
@@ -790,24 +922,30 @@ class Field:
         delta_time: `number`
             Factor that represents a longer or shorter exposure. Default is `1`.
         background_fluct: `str`
-            Distribution that the background follows. At the moment is a placeholder, since it is always set as a
-            gaussian. Default is `'gaussian'`.
+            Distribution that the background follows. At the moment is a
+            placeholder, since it is always set as a gaussian. Default is
+            `'gaussian'`.
         snr: `number`
-            Estimate of the Signal to Noise Ratio, used to generate the background. Default is `10`.
+            Estimate of the Signal to Noise Ratio, used to generate the
+            background. Default is `10`.
         bgnd_rel_var: `number`
-            Relative dispersion of the background distribution. Default is `0.05`.
+            Relative dispersion of the background distribution. Default is
+            `0.05`.
         gain_mean: `number`
             Mean value of the gain of the CCD. Default is 1.
         gain_rel_var: `number`
             Relative dispersion of the gain of the CCD. Default is 0.01.
         dk_c_fraction: `number`
-            Fraction of the mean background to be set as mean of the dark current of the CCD. Default is 0.1 (optional).
+            Fraction of the mean background to be set as mean of the dark
+            current of the CCD. Default is 0.1 (optional).
         dk_c_rel_var: `number >= 0
             Relative dispersion of the dark current of the CCD. Default is 0.01.
         dk_c: `number`
-            Mean value of the dark current of the CCD, if no background is available. Default is 1 (optional).
+            Mean value of the dark current of the CCD, if no background is
+            available. Default is 1 (optional).
         force: `bool`
-            Flag to force re-initialization of the field if it had already been initialized. Default is `False`.
+            Flag to force re-initialization of the field if it had already been
+            initialized. Default is `False`.
 
         Raises
         ------
@@ -816,12 +954,14 @@ class Field:
         `NotInitializedError`:
             If the field has not been initialized, yet.
         `FieldAlreadyInitializedWarning`:
-            If the exposure has been previously simulated. Execution is not halted, but the exposure is not simulated.
+            If the exposure has been previously simulated. Execution is not
+            halted, but the exposure is not simulated.
 
         See Also
         --------
-        `Field.initialize_field`, `Field.add_photon_noise`, `Field.add_background`, `Field.apply_psf`,
-        `Field.create_gain_map`, `Field.create_dark_current`.
+        `Field.initialize_field`, `Field.add_photon_noise`,
+        `Field.add_background`, `Field.apply_psf`, `Field.create_gain_map`,
+        `Field.create_dark_current`.
         """
         if not isinstance(force, bool):
             raise TypeError('`force` argument must be a bool.')
@@ -831,22 +971,32 @@ class Field:
             raise UnexpectedDatatypeError
 
         if self.__has_record and not force:
-            warnings.warn("Complete field has been already generated, use `force=True` argument to force new exposure.",
+            warnings.warn("Complete field has been already generated, use "
+                          "`force=True` argument to force new exposure.",
                           FieldAlreadyInitializedWarning)
         elif not self.__has_record or force:
             # Simulation advancement at each step after initialization.
-            self.add_photon_noise(delta_time=delta_time, force=True, multiply=False)
-            self.add_background(fluct=background_fluct, snr=snr, rel_var=bgnd_rel_var, force=True)
+            self.add_photon_noise(
+                delta_time=delta_time, force=True, multiply=False)
+            self.add_background(
+                fluct=background_fluct, snr=snr, rel_var=bgnd_rel_var,
+                force=True)
             self.apply_psf(kernel=kernel, force=True)
 
             if not self.__has_gain_map:
-                # if a gain map has not been generated, it is now, otherwise the generated one is used. Overriding
-                # the generated gain map should be a careful decision because it is intrinsically tied to the CCD
-                # production process and it is not a random variable, for a given CCD.
-                self.create_gain_map(mean_gain=gain_mean, rel_var=gain_rel_var, force=True)
-            self.create_dark_current(b_fraction=dk_c_fraction, rel_var=dk_c_rel_var, dk_c=dk_c, force=True)
+                # if a gain map has not been generated, it is now, otherwise the
+                # generated one is used. Overriding the generated gain map
+                # should be a careful decision because it is intrinsically tied
+                # to the CCD production process and it is not a random variable,
+                # for a given CCD.
+                self.create_gain_map(
+                    mean_gain=gain_mean, rel_var=gain_rel_var, force=True)
+            self.create_dark_current(
+                b_fraction=dk_c_fraction, rel_var=dk_c_rel_var, dk_c=dk_c,
+                force=True)
 
-            self.recorded_field = self.gain_map * self.w_psf_field + self.dark_current
+            self.recorded_field = self.gain_map * self.w_psf_field + \
+                                  self.dark_current
             self.status = ImageStatus().EXPOSURE
             self.__has_record = True
 
@@ -859,30 +1009,34 @@ class Field:
         name: `str`
             The name of the file (without extension).
         path: `str` or `path.Path` instance
-            Path where to save the files. If `None`, the current directory is used. Default is `None`.
+            Path where to save the files. If `None`, the current directory is
+            used. Default is `None`.
 
         Raises
         ------
         `TypeError`:
-            If `name` is not a string or if `path` is not a string or a `Path` and is not `None`.
+            If `name` is not a string or if `path` is not a string or a `Path`
+            and is not `None`.
         `IncompatibleStatusError`:
             If the status of the image is not `EXPOSURE`.
         `NotInitializedError`:
             If the field has not been initialized, yet.
         `IncompleteImageError`:
-            If the complete simulation has not been run through the `record_field` method, yet.
+            If the complete simulation has not been run through the
+            `record_field` method, yet.
         """
         if not isinstance(name, str):
             raise TypeError('`name` of the files must be a string.')
         if not isinstance(path, (str, Path)) and path is not None:
-            raise TypeError('`path` must be either a string or a `Path` instance.')
+            raise TypeError('`path` must be either a string or a `Path` '
+                            'instance.')
 
         if self.status != ImageStatus().EXPOSURE:
             raise IncompatibleStatusError
         if not self.__initialized:
             raise NotInitializedError
-        if not self.__ph_noise or not self.__background or not self.__psf or not self.__has_gain_map or not \
-                self.__has_dark_current:
+        if not self.__ph_noise or not self.__background or not self.__psf or \
+                not self.__has_gain_map or not self.__has_dark_current:
             raise IncompleteImageError
 
         if path is None:
@@ -898,30 +1052,38 @@ class Field:
         np.savetxt(gain_path, self.gain_map, fmt='%g', header=header)
 
         gen_output = ['# Initial Settings\n',
-                      '# background: SNR = {:g} - {:g}%\n'.format(self.__snr_background,
-                                                                  100 * self.__rel_var_background),
-                      '#             {:g} +- {:g}\n'.format(self.__mean_background, self.__std_background),
-                      '# psf       : {:g} x - {:g} y\n'.format(self.__sigma_x_psf, self.__sigma_y_psf),
-                      '# gain      : {:g} +- {:g} ({:g}%)\n'.format(self.__mean_gain, self.__std_gain,
-                                                                   100 * self.__rel_var_gain),
-                      '# dark curr : {:g} +- {:g} ({:g}%)\n'.format(self.__mean_dk_c, self.__std_dk_c,
-                                                                   100 * self.__rel_var_dk_c),
+                      '# background: SNR = {:g} - {:g}%\n'.format(
+                          self.__snr_background,
+                          100 * self.__rel_var_background),
+                      '#             {:g} +- {:g}\n'.format(
+                          self.__mean_background, self.__std_background),
+                      '# psf       : {:g} x - {:g} y\n'.format(
+                          self.__sigma_x_psf, self.__sigma_y_psf),
+                      '# gain      : {:g} +- {:g} ({:g}%)\n'.format(
+                          self.__mean_gain, self.__std_gain,
+                          100 * self.__rel_var_gain),
+                      '# dark curr : {:g} +- {:g} ({:g}%)\n'.format(
+                          self.__mean_dk_c, self.__std_dk_c,
+                          100 * self.__rel_var_dk_c),
                       '# \n',
-                      '# If plotting data with `plt.imshow`, correct coords are visible with `plt.imshow(array.T)`,\n',
+                      '# If plotting data with `plt.imshow`, correct coords are'
+                      ' visible with `plt.imshow(array.T)`,\n',
                       '# where array is the content from `*_data.txt`\n',
                       '# Stars (x, y, mass, luminosity)\n']
         with open(gen_path, 'w') as f:
             for row in gen_output:
                 f.write(row)
             for source in self.sources:
-                f.write('{:d}\t{:d}\t{:g}\t{:g}\n'.format(source.coords[0], source.coords[1],
-                                                          source.mass, source.luminosity))
+                f.write('{:d}\t{:d}\t{:g}\t{:g}\n'.format(
+                    source.coords[0], source.coords[1],
+                    source.mass, source.luminosity))
 
     @property
     def shot(self):
         """
-        Property of a `Field` instance, returns a "shot" of the actual `ImageStatus` of the field. See
-        `utils.ImageStatus` for more information.
+        Property of a `Field` instance, returns a "shot" of the actual
+        `ImageStatus` of the field. See `utils.ImageStatus` for more
+        information.
         """
         if self.status == ImageStatus().NOTINIT:
             raise NotInitializedError

@@ -1,18 +1,18 @@
 import numpy as np
 
 from astropy.io import fits
-from path import Path
+from pathlib import Path
 
-from ..field import Field
-from ..utils import ImageStatus
-from ..utils import DataType
+from field import Field
+from utils import ImageStatus
+from utils import DataType
 # noinspection PyProtectedMember
-from ..utils import _status_values
+from utils import _status_values
 # noinspection PyProtectedMember
-from ..utils import _datatype_values
+from utils import _datatype_values
 
-from ..excep import InvalidExtensionError
-from ..excep import IncompatibleStatusError
+from excep import InvalidExtensionError
+from excep import IncompatibleStatusError
 
 
 class Observation:

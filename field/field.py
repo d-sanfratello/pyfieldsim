@@ -5,22 +5,22 @@ import numpy as np
 import scipy.signal as scipysig
 import warnings
 
-from path import Path
+from pathlib import Path
 
-from ..psf import Kernel
-from ..skysource import SkySource
-from ..utils import DataType
-from ..utils import ImageStatus
+from psf import Kernel
+from skysource import SkySource
+from utils import DataType
+from utils import ImageStatus
 
-from ..excep import WrongShapeError
-from ..excep import NotInitializedError
-from ..excep import ArgumentError
-from ..excep import UnexpectedDatatypeError
-from ..excep import IncompatibleStatusError
-from ..excep import IncompleteImageError
-from ..warn import CorrectDataTypeWarning
-from ..warn import FieldAlreadyInitializedWarning
-from ..warn import LowLuminosityWarning
+from excep import WrongShapeError
+from excep import NotInitializedError
+from excep import ArgumentError
+from excep import UnexpectedDatatypeError
+from excep import IncompatibleStatusError
+from excep import IncompleteImageError
+from warn import CorrectDataTypeWarning
+from warn import FieldAlreadyInitializedWarning
+from warn import LowLuminosityWarning
 
 
 class Field:

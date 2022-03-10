@@ -7,20 +7,20 @@ import warnings
 
 from pathlib import Path
 
-from psf import Kernel
-from skysource import SkySource
-from utils import DataType
-from utils import ImageStatus
+from fieldsim.psf import Kernel
+from fieldsim.skysource import SkySource
+from fieldsim.utils import DataType
+from fieldsim.utils import ImageStatus
 
-from excep import WrongShapeError
-from excep import NotInitializedError
-from excep import ArgumentError
-from excep import UnexpectedDatatypeError
-from excep import IncompatibleStatusError
-from excep import IncompleteImageError
-from warn import CorrectDataTypeWarning
-from warn import FieldAlreadyInitializedWarning
-from warn import LowLuminosityWarning
+from fieldsim.utils.exceptions import WrongShapeError
+from fieldsim.utils.exceptions import NotInitializedError
+from fieldsim.utils.exceptions import ArgumentError
+from fieldsim.utils.exceptions import UnexpectedDatatypeError
+from fieldsim.utils.exceptions import IncompatibleStatusError
+from fieldsim.utils.exceptions import IncompleteImageError
+from fieldsim.utils.warnings import CorrectDataTypeWarning
+from fieldsim.utils.warnings import FieldAlreadyInitializedWarning
+from fieldsim.utils.warnings import LowLuminosityWarning
 
 
 class Field:

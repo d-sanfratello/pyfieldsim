@@ -1,7 +1,7 @@
 import numpy as np
 
-from excep import WrongCoordsFormatError
-from excep import WrongCoordsLengthError
+from fieldsim.utils.exceptions import WrongCoordsFormatError
+from fieldsim.utils.exceptions import WrongCoordsLengthError
 
 
 class SkySource:

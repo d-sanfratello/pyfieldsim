@@ -1,6 +1,6 @@
-from field import Field
-from observation import Observation
-from psf.kernels import GaussKernel
+from fieldsim.field import Field
+from fieldsim.observation import Observation
+from fieldsim.psf.kernels import GaussKernel
 
 
 if __name__ == "__main__":

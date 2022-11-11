@@ -1,5 +1,6 @@
 import os
 
+import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.signal as scipysig
@@ -803,6 +804,29 @@ class Field:
             self.__rel_var_dk_c = rel_var
 
             self.__has_dark_current = True
+
+    def export_field(self, filename='field.hdf5'):
+        if filename.lower().find('.hdf5') < 0:
+            filename += '.hdf5'
+
+        path = Path(os.getcwd())
+        path.joinpath(filename)
+
+        with h5py.File(path, "w") as file:
+            img_dset = file.create_dataset(
+                'field',
+                shape=self.shape,
+                dtype=np.double
+            )
+            img_dset[0:] = self.shot
+
+            # TODO: convert dictionary of all the available metadata
+            #  information into a dataset for the hdf5 file. Find a way to
+            #  import back the hdf5 file and create a field from this.
+            meta_dset = file.create_dataset(
+                'metadata',
+                dtype=dict
+            )
 
     def show_field(self, field='true', mode='log'):
         """

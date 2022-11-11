@@ -7,8 +7,8 @@ if __name__ == "__main__":
     # -------------------------------------------------------------------------
     # Complete operation
     # -------------------------------------------------------------------------
-    field = Field((200, 200))
-    field.initialize_field(density=0.02, datatype='luminosity')
+    field = Field((100, 100))
+    field.initialize_field(density=0.002, datatype='luminosity')
 
     field.show_field('true')
 
@@ -16,6 +16,7 @@ if __name__ == "__main__":
 
     # counting single stars
     stars, coords = observation.count_single_stars()
+    print(f'{len(stars)} single stars')
 
     psf = GaussKernel(sigma=3)
 

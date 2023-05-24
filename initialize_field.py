@@ -2,7 +2,7 @@ import optparse as op
 
 from pyfieldsim.field import Field
 from pyfieldsim.observation import Observation
-from pyfieldsim.psf.kernels import GaussKernel
+from pyfieldsim.psf_kernels import GaussKernel
 
 
 if __name__ == "__main__":

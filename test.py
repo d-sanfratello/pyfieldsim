@@ -1,11 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import cpnest
 import cpnest.model
 
 from pyfieldsim.field import Field
 from pyfieldsim.observation import Observation
-from pyfieldsim.psf.kernels import GaussKernel
 
 
 def powerlaw_b_fixed(L, C, a):

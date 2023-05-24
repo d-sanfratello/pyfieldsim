@@ -567,8 +567,8 @@ class Field:
 
         Parameters
         ----------
-        kernel: `fieldsim.psf.Kernel`
-            Kernel of the point spread function. See `fieldsim.psf.Kernel`.
+        kernel: `pyfieldsim.psf.Kernel`
+            Kernel of the point spread function. See `pyfieldsim.psf.Kernel`.
         force: `bool`
             Flag to force re-initialization of the field if it had already been
             initialized. Default is `False`.
@@ -936,7 +936,7 @@ class Field:
 
         Parameters
         ----------
-        kernel: `fieldsim.psf.Kernel`
+        kernel: `pyfieldsim.psf.Kernel`
             Kernel of the point spread function. See `pyfieldsim.psf.Kernel`.
         delta_time: `number`
             Factor that represents a longer or shorter exposure. Default is `1`.

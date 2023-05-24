@@ -2,13 +2,13 @@ import numpy as np
 from setuptools import setup
 from codecs import open
 
-try:
-    import cpnest
-except ImportError:
-    raise Exception(
-        "This package needs `cpnest`. To install it follow instructions at"
-        "https://github.com/johnveitch/cpnest/tree/massively_parallel."
-    )
+# try:
+#     import cpnest
+# except ImportError:
+#     raise Exception(
+#         "This package needs `cpnest`. To install it follow instructions at"
+#         "https://github.com/johnveitch/cpnest/tree/massively_parallel."
+#     )
 
 # try:
 #     import figaro

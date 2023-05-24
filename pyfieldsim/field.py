@@ -805,14 +805,12 @@ class Field:
 
             self.__has_dark_current = True
 
-    def export_field(self, filename='field.hdf5'):
-        if filename.lower().find('.hdf5') < 0:
-            filename += '.hdf5'
+    def export_field(self, filename):
+        filename = Path(filename)
+        if filename.suffix.lower() != '.h5':
+            filename = filename.with_suffix('.h5')
 
-        path = Path(os.getcwd())
-        path.joinpath(filename)
-
-        with h5py.File(path, "w") as file:
+        with h5py.File(filename, "w") as file:
             img_dset = file.create_dataset(
                 'field',
                 shape=self.shape,
@@ -1116,3 +1114,44 @@ class Field:
             return self.w_psf_field
         elif self.status == ImageStatus().EXPOSURE:
             return self.recorded_field
+
+    @property
+    def metadata(self):
+        sim_meta = {
+            'shape': self.shape,
+            'pad': self.__pad,
+            'data_type': self.datatype,
+            'sim_status': self.status,
+            'has_photon_noise': self.__ph_noise,
+            'has_background': self.__background,
+            'has_psf': self.__psf,
+            'has_gain_map': self.__has_gain_map,
+            'has_dark_current': self.__has_dark_current,
+            'is_record': self.__has_record,
+        }
+        field_meta = {
+            'max_coords': self.max_signal_coords,
+        }
+        gain_meta = {
+            'mean': self.__mean_gain,
+            'std': self.__std_gain,
+            'rel': self.__rel_var_gain
+        }
+        background_meta = {
+            'mean': self.__mean_background,
+            'std': self.__std_background,
+            'rel': self.__rel_var_background,
+            'snr': self.__snr_background
+        }
+        dark_current_meta = {
+            'mean': self.__mean_dk_c,
+            'std': self.__std_dk_c,
+            'rel': self.__rel_var_dk_c
+        }
+        psf_meta = {
+            'sigma_x': self.__sigma_x_psf,
+            'sigma_y': self.__sigma_y_psf
+        }
+
+        return (sim_meta, field_meta, gain_meta, background_meta,
+                dark_current_meta, psf_meta)

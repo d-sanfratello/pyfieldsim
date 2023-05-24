@@ -4,15 +4,15 @@ from astropy.io import fits
 from pathlib import Path
 
 from pyfieldsim.field import Field
-from pyfieldsim.utils import ImageStatus
-from pyfieldsim.utils import DataType
+from pyfieldsim.core import ImageStatus
+from pyfieldsim.core import DataType
 # noinspection PyProtectedMember
-from pyfieldsim.utils import _status_values
+from pyfieldsim.core._status import _status_values
 # noinspection PyProtectedMember
-from pyfieldsim.utils import _datatype_values
+from pyfieldsim.core._status import _datatype_values
 
-from pyfieldsim.utils.exceptions import InvalidExtensionError
-from pyfieldsim.utils.exceptions import IncompatibleStatusError
+from pyfieldsim.errors.exceptions import InvalidExtensionError
+from pyfieldsim.errors.exceptions import IncompatibleStatusError
 
 
 class Observation:

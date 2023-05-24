@@ -8,20 +8,20 @@ import warnings
 
 from pathlib import Path
 
-from pyfieldsim.psf import Kernel
-from pyfieldsim.skysource import SkySource
-from pyfieldsim.utils import DataType
-from pyfieldsim.utils import ImageStatus
+from pyfieldsim.core.kernel import Kernel
+from pyfieldsim.core.skysource import SkySource
+from pyfieldsim.core import DataType
+from pyfieldsim.core import ImageStatus
 
-from pyfieldsim.utils.exceptions import WrongShapeError
-from pyfieldsim.utils.exceptions import NotInitializedError
-from pyfieldsim.utils.exceptions import ArgumentError
-from pyfieldsim.utils.exceptions import UnexpectedDatatypeError
-from pyfieldsim.utils.exceptions import IncompatibleStatusError
-from pyfieldsim.utils.exceptions import IncompleteImageError
-from pyfieldsim.utils.warnings import CorrectDataTypeWarning
-from pyfieldsim.utils.warnings import FieldAlreadyInitializedWarning
-from pyfieldsim.utils.warnings import LowLuminosityWarning
+from pyfieldsim.errors.exceptions import WrongShapeError
+from pyfieldsim.errors.exceptions import NotInitializedError
+from pyfieldsim.errors.exceptions import ArgumentError
+from pyfieldsim.errors.exceptions import UnexpectedDatatypeError
+from pyfieldsim.errors.exceptions import IncompatibleStatusError
+from pyfieldsim.errors.exceptions import IncompleteImageError
+from pyfieldsim.errors.warnings import CorrectDataTypeWarning
+from pyfieldsim.errors.warnings import FieldAlreadyInitializedWarning
+from pyfieldsim.errors.warnings import LowLuminosityWarning
 
 
 class Field:
@@ -586,7 +586,7 @@ class Field:
         Examples
         --------
         >>> # Import of kernels. The gaussian one is used to initialize the psf.
-        >>> from pyfieldsim.psf.kernels import GaussKernel
+        >>> from pyfieldsim.core.psf import GaussKernel
         >>> psf = GaussKernel(sigma=3, size=2.5)
         >>> # The psf is applied to the field.
         >>> fld.apply_psf(psf)

@@ -1,19 +1,15 @@
 from datetime import datetime
 
 
-class ParseDType:
-    def __call__(self, args):
-        if args.datatype not in ['luminosity', 'magnitude', 'mass']:
-            raise ValueError()
-        elif args.datatype == 'luminosity':
-            return 'L'
-        elif args.datatype == 'magnitude':
-            return 'm'
-        elif args.datatype == 'mass':
-            return 'M'
-
-
-parse_dtype = ParseDType()
+def parse_dtype(args):
+    if args.datatype not in ['luminosity', 'magnitude', 'mass']:
+        raise ValueError()
+    elif args.datatype == 'luminosity':
+        return 'L'
+    elif args.datatype == 'magnitude':
+        return 'm'
+    elif args.datatype == 'mass':
+        return 'M'
 
 
 def get_filename(args, out_folder, dtype):

@@ -40,6 +40,7 @@ class ImageStatus:
     @property
     def EXPOSURE(self):
         """
-        The simulation contains the whole exposure, taking into account the gain map and the dark current of the CCD.
+        The simulation contains the whole exposure, taking into account the
+        gain map and the dark current of the CCD.
         """
         return 'exposure'

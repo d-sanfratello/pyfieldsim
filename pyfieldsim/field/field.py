@@ -8,20 +8,20 @@ import warnings
 
 from pathlib import Path
 
-from fieldsim.psf import Kernel
-from fieldsim.skysource import SkySource
-from fieldsim.utils import DataType
-from fieldsim.utils import ImageStatus
+from pyfieldsim.psf import Kernel
+from pyfieldsim.skysource import SkySource
+from pyfieldsim.utils import DataType
+from pyfieldsim.utils import ImageStatus
 
-from fieldsim.utils.exceptions import WrongShapeError
-from fieldsim.utils.exceptions import NotInitializedError
-from fieldsim.utils.exceptions import ArgumentError
-from fieldsim.utils.exceptions import UnexpectedDatatypeError
-from fieldsim.utils.exceptions import IncompatibleStatusError
-from fieldsim.utils.exceptions import IncompleteImageError
-from fieldsim.utils.warnings import CorrectDataTypeWarning
-from fieldsim.utils.warnings import FieldAlreadyInitializedWarning
-from fieldsim.utils.warnings import LowLuminosityWarning
+from pyfieldsim.utils.exceptions import WrongShapeError
+from pyfieldsim.utils.exceptions import NotInitializedError
+from pyfieldsim.utils.exceptions import ArgumentError
+from pyfieldsim.utils.exceptions import UnexpectedDatatypeError
+from pyfieldsim.utils.exceptions import IncompatibleStatusError
+from pyfieldsim.utils.exceptions import IncompleteImageError
+from pyfieldsim.utils.warnings import CorrectDataTypeWarning
+from pyfieldsim.utils.warnings import FieldAlreadyInitializedWarning
+from pyfieldsim.utils.warnings import LowLuminosityWarning
 
 
 class Field:
@@ -586,7 +586,7 @@ class Field:
         Examples
         --------
         >>> # Import of kernels. The gaussian one is used to initialize the psf.
-        >>> from fieldsim.psf.kernels import GaussKernel
+        >>> from pyfieldsim.psf.kernels import GaussKernel
         >>> psf = GaussKernel(sigma=3, size=2.5)
         >>> # The psf is applied to the field.
         >>> fld.apply_psf(psf)
@@ -598,7 +598,7 @@ class Field:
         """
         if not isinstance(kernel, Kernel):
             raise TypeError('`kernel` argument must be an instance of '
-                            '`fieldsim.psf.Kernel` class.')
+                            '`pyfieldsim.psf.Kernel` class.')
 
         if not self.__initialized:
             raise NotInitializedError
@@ -937,7 +937,7 @@ class Field:
         Parameters
         ----------
         kernel: `fieldsim.psf.Kernel`
-            Kernel of the point spread function. See `fieldsim.psf.Kernel`.
+            Kernel of the point spread function. See `pyfieldsim.psf.Kernel`.
         delta_time: `number`
             Factor that represents a longer or shorter exposure. Default is `1`.
         background_fluct: `str`

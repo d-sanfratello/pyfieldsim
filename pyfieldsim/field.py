@@ -27,7 +27,7 @@ from pyfieldsim.errors.warnings import LowLuminosityWarning
 class Field:
     __valid_fields = ['true', 'ph_noise', 'background', 'psf', 'exposure',
                       'gain_map', 'dark_current']
-    __attributes = {'true': 'true_field',
+    __attributes = {'true': 'large_field',
                     'ph_noise': 'w_ph_noise_field',
                     'background': 'w_background_field',
                     'psf': 'w_psf_field',
@@ -180,9 +180,7 @@ class Field:
         >>> # relation but with enhanced luminosity. The density of stars has
         >>> # been set to the 2%. The data that will be represented in the field
         >>> # is in units of luminosity.
-        >>> fld.initialize_field(
-        >>>     density=0.02, e_imf=2.4, e_lm=3, cst_lm=100,
-        >>>     datatype='luminosity')
+        >>> fld.initialize_field(density=0.02,e_imf=2.4,e_lm=3,cst_lm=100)
 
         See Also
         --------
@@ -818,13 +816,23 @@ class Field:
             )
             img_dset[0:] = self.shot
 
+            # metadata = self.metadata
+            # file.attrs['simulation_meta'] = metadata['simulation']
+            # file.attrs['gain_meta'] = metadata['gain']
+            # file.attrs['background_meta'] = metadata['background']
+            # file.attrs['dark_current_meta'] = metadata['dark_current']
+            # file.attrs['psf_meta'] = metadata['psf']
+
             # TODO: convert dictionary of all the available metadata
             #  information into a dataset for the hdf5 file. Find a way to
             #  import back the hdf5 file and create a field from this.
-            meta_dset = file.create_dataset(
-                'metadata',
-                dtype=dict
-            )
+            # meta_dset = file.create_dataset(
+            #     'metadata',
+            #     dtype=dict
+            # )
+            # meta_dset[0] = self.metadata
+            # sim_meta, field_meta, gain_meta, background_meta,
+            #                 dark_current_meta, psf_meta
 
     def show_field(self, field='true', mode='log'):
         """
@@ -1152,6 +1160,13 @@ class Field:
             'sigma_x': self.__sigma_x_psf,
             'sigma_y': self.__sigma_y_psf
         }
+        meta = {
+            'simulation': sim_meta,
+            'field': field_meta,
+            'gain': gain_meta,
+            'background': background_meta,
+            'dark_current': dark_current_meta,
+            'psf': psf_meta
+        }
 
-        return (sim_meta, field_meta, gain_meta, background_meta,
-                dark_current_meta, psf_meta)
+        return meta

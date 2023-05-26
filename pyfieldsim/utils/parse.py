@@ -1,18 +1,7 @@
 from datetime import datetime
 
 
-def parse_dtype(args):
-    if args.datatype not in ['luminosity', 'magnitude', 'mass']:
-        raise ValueError()
-    elif args.datatype == 'luminosity':
-        return 'L'
-    elif args.datatype == 'magnitude':
-        return 'm'
-    elif args.datatype == 'mass':
-        return 'M'
-
-
-def get_filename(args, out_folder, dtype):
+def get_filename(out_folder):
     now = datetime.utcnow()
     now = [
         getattr(now, _)
@@ -26,7 +15,7 @@ def get_filename(args, out_folder, dtype):
     date = '-'.join(now[:-3]) + 'T' + ''.join(now[-3:])
 
     filename = out_folder.joinpath(
-        f"{dtype}_{args.field_size}_d{args.density:.0e}_{date}"
+        f"S_{date}.h5"
     )
 
     return filename

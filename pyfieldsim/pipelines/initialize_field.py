@@ -3,11 +3,8 @@ import os
 
 from pathlib import Path
 
-# from pyfieldsim.core.psf import GaussKernel
-from pyfieldsim.field import Field
-# from pyfieldsim.observation import Observation
-from pyfieldsim.utils.parse import (get_filename,
-                                    parse_dtype)
+from pyfieldsim.core.fieldtypes.sources import Sources
+from pyfieldsim.utils.parse import (get_filename,)
 
 
 def main():
@@ -18,6 +15,10 @@ def main():
     parser.add_argument("-f", "--field-size", type=int,
                         dest='field_size', default=100,
                         help="")
+    parser.add_argument("-m", "--min-mass", type=float,
+                        dest='m_min', default=1)
+    parser.add_argument("-M", "--max-mass", type=float,
+                        dest='m_max', default=350)
     parser.add_argument("-d", "--density", type=float,
                         dest='density', default=2e-3,
                         help="")
@@ -33,9 +34,6 @@ def main():
     parser.add_argument("-o", "--output",
                         dest='out_folder', default=None,
                         help="")
-    parser.add_argument("--data-type",
-                        dest='datatype', default='luminosity',
-                        help="")
     parser.add_argument("--seed", type=int,
                         dest='seed', default=None,
                         help="")
@@ -49,49 +47,19 @@ def main():
     else:
         out_folder = Path(args.out_folder)
 
-    dtype = parse_dtype(args)
+    filename = get_filename(out_folder=out_folder)
 
-    filename = get_filename(args, out_folder=out_folder, dtype=dtype)
-
-    field = Field(field_size)
-    field.initialize_field(
+    source_list = Sources(field_size)
+    source_list.initialize_field(
+        m_min=args.m_min,
+        m_max=args.m_max,
         density=args.density,
         e_imf=args.e_imf,
         e_lm=args.e_lm,
         cst_lm=args.cst_lm,
         seed=args.seed,
-        datatype=args.datatype,
-        force=False
     )
-
-    # FIXME: output files should be hdf5 with one dataset for data and one
-    #  dataset for stored simulation parameters.
-    field.export_field(filename=filename)
-
-    # -------------------------------------------------------------------------
-    # Complete operation
-    # -------------------------------------------------------------------------
-    # field = Field((100, 100))
-    # field.initialize_field(density=0.002, datatype='luminosity')
-    #
-    # field.show_field('true')
-    #
-    # observation = Observation(field)
-    #
-    # # counting single stars
-    # stars, coords = observation.count_single_stars()
-    # print(f'{len(stars)} single stars')
-    #
-    # psf = GaussKernel(sigma=3)
-    #
-    # field.record_field(kernel=psf,
-    #                    delta_time=1000, snr=10, bgnd_rel_var=0.05,
-    #                    gain_mean=1, gain_rel_var=0.01,
-    #                    dk_c_fraction=0.1, dk_c_rel_var=0.01, dk_c=1,
-    #                    force=True)
-    #
-    # field.save_field(name='stars')
-    # field.show_field('exposure')
+    source_list.export_sources(filename=filename)
 
 
 if __name__ == "__main__":

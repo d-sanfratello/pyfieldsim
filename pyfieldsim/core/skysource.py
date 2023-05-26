@@ -163,19 +163,19 @@ class SkySource:
         >>> # Mass of a star following an IMF defined by the powerlaw
         >>> # M^-2.4, in case the random variable is 0.3, for for the
         >>> # default mass limits.
-        >>> src.random_cimf(0.3, e=2.4)
+        >>> src.__random_cimf(0.3,e=2.4)
         >>> 1.2900536896433321
 
         >>> # Mass of a star following an IMF defined by the powerlaw M^-2.4,
         >>> # in case the random variable is 0.6, for for the default mass
         >>> # limits.
-        >>> src.random_cimf(0.6, e=2.4)
+        >>> src.__random_cimf(0.6,e=2.4)
         >>> 1.9236020460960432
 
         >>> # Mass of a star following an IMF defined by the powerlaw
         >>> # M^-2.4, in case the random variable is 0.95, for for the
         >>> # default mass limits.
-        >>> src.random_cimf(0.95, e=2.4)
+        >>> src.__random_cimf(0.95,e=2.4)
         >>> 8.46631304311171
 
         See Also
@@ -224,7 +224,7 @@ class SkySource:
         --------
         >>> # Luminosity of a star of mass 2.5 arb. mass. units, for a relation
         >>> # L = M^3.
-        >>> src.lm_relation(e=3, cst=1)
+        >>> src.__lm_relation(e=3,cst=1)
         >>> 15.625
         """
         if e <= 0:
@@ -263,7 +263,7 @@ class SkySource:
         --------
         >>> # If the star has a luminosity of 10 arb. lum. units, this method
         >>> # returns:
-        >>> src.l2mag()
+        >>> src.__l2mag()
         -2.5
         """
         if self.luminosity is None:

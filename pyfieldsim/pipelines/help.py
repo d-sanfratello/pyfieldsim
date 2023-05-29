@@ -11,6 +11,10 @@ def main():
     parser.add_argument("--initialize", action='store_true',
                         help="initializes the field with the true positions "
                              "and magnitudes of the stars.")
+    parser.add_argument("--fs-generate-ph-noise", action='store_true',
+                        help="takes a sources list and generate an exposure "
+                             "with a certain time delta of observation, "
+                             "taking into account the photon noise.")
 
     args = parser.parse_args()
 

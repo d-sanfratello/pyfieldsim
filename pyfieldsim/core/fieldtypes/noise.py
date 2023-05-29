@@ -14,7 +14,7 @@ def ph_noise(sources_file, delta_time):
 
     # Poisson noise generation of photon noise around the (integer)
     # luminosity of the star as mean
-    w_ph_noise = rng.poisson(exposed_field)
+    w_ph_noise = rng.poisson(exposed_field.field)
     w_ph_noise = np.where(
         w_ph_noise < 0, 0, w_ph_noise
     )

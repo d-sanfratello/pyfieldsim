@@ -2,6 +2,36 @@ from pyfieldsim.field import Field
 from pyfieldsim.observation import Observation
 from pyfieldsim.core.psf import GaussKernel
 
+#         # Simulation advancement at each step after initialization.
+#         self.add_photon_noise(
+#             delta_time=delta_time,
+#             force=True,
+#             multiply=False
+#         )
+#         self.add_background(
+#             fluct=background_fluct,
+#             snr=snr,
+#             rel_var=bgnd_rel_var,
+#             force=True
+#         )
+#         self.apply_psf(kernel=kernel, force=True)
+#
+#         self.create_gain_map(
+#             mean_gain=gain_mean,
+#             rel_var=gain_rel_var,
+#             force=True
+#         )
+#         self.create_dark_current(
+#             b_fraction=dk_c_fraction,
+#             rel_var=dk_c_rel_var,
+#             dk_c=dk_c,
+#             force=True
+#         )
+#
+#         self.recorded_field = self.gain_map \
+#           * self.w_psf_field \
+#           + self.dark_current
+
 
 if __name__ == "__main__":
     # -------------------------------------------------------------------------

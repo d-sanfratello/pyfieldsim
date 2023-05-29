@@ -71,9 +71,9 @@ class Field:
                 file.attrs['k'] = str(v)
 
     def __mul__(self, other):
-        self.field *= other
+        new_field = self.field * other
 
-        return self
+        return new_field
 
     @property
     def metadata(self):

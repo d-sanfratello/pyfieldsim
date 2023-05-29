@@ -10,7 +10,7 @@ from pyfieldsim.utils.parse import (get_filename,)
 def main():
     parser = ag.ArgumentParser(
         prog='fs-initialize',
-        description='This script shows a fits or h5 image of a spectrum.',
+        description='',
     )
     parser.add_argument("-f", "--field-size", type=int,
                         dest='field_size', default=100,

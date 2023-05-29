@@ -294,7 +294,7 @@ class Sources:
             mag_dset[0:] = self.magnitude
 
             for k, v in self.metadata.items():
-                file.attrs['k'] = v
+                file.attrs[k] = v
 
     @property
     def metadata(self):

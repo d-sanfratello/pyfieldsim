@@ -18,9 +18,10 @@ class Field:
             }
 
         field = np.zeros(
-            shape=(metadata['ext_shape'], metadata['ext_shape'])
+            shape=metadata['ext_shape']
         )
-        field[coords] = lum
+        for c, l in zip(coords, lum):
+            field[c[0], c[1]] = l
 
         return Field(field, sources_file=sources_file, seed=metadata['seed'])
 
@@ -39,7 +40,7 @@ class Field:
             field, *{k: v for k, v in metadata.items() if v is not None}
         )
 
-    def __init__(self, field,
+    def __init__(self, field, *,
                  seed=None,
                  sources_file=None,
                  ph_noise_file=None,
@@ -67,12 +68,22 @@ class Field:
             field[0:] = self.field
 
             for k, v in self.metadata.items():
-                file.attrs['k'] = v
+                file.attrs['k'] = str(v)
+
+    def __mul__(self, other):
+        self.field *= other
+
+        return self
 
     @property
     def metadata(self):
         meta = {
-            k: str(v) for k, v in self.__dict__ if k != 'field'
+            k: str(v) for k, v in self.__dict__.items() if k != 'field'
         }
+        for k, v in meta.items():
+            if k == '_seed':
+                meta[k] = int(v)
+            elif v == 'None':
+                meta[k] = None
 
         return meta

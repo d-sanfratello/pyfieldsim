@@ -15,6 +15,10 @@ def main():
                         help="takes a sources list and generate an exposure "
                              "with a certain time delta of observation, "
                              "taking into account the photon noise.")
+    parser.add_argument("--fs-generate-background", action='store_true',
+                        help="takes a field with photon noise contamination "
+                             "and determines a certain level of background "
+                             "noise from a SNR.")
 
     args = parser.parse_args()
 

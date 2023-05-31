@@ -26,12 +26,14 @@ scripts = [
     'fs-help=pyfieldsim.pipelines.help:main',
     'fs-initialize=pyfieldsim.pipelines.initialize_field:main',
     'fs-generate-ph-noies=pyfieldsim.pipelines.generate_ph_noise:main',
+    'fs-generate-background=pyfieldsim.pipelines.generate_background:main',
     'fs-observation=pyfieldsim.pipelines.simulate_observation:main',
 ]
 pymodules = [
     'pyfieldsim/pipelines/help',
     'pyfieldsim/pipelines/initialize_field',
     'pyfieldsim/pipelines/generate_ph_noise',
+    'pyfieldsim/pipelines/generate_background',
     'pyfieldsim/pipelines/simulate_observation',
 ]
 

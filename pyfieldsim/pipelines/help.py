@@ -22,6 +22,9 @@ def main():
     parser.add_argument("--fs-generate-gain-map", action='store_true',
                         help="initializes a gain map matrix for the "
                              "simulated CCD sensor.")
+    parser.add_argument("--fs-generate-dark-current", action='store_true',
+                        help="initializes a dark current matrix for the "
+                             "simulated CCD sensor.")
 
     args = parser.parse_args()
 

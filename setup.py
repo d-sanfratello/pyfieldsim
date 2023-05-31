@@ -27,6 +27,7 @@ scripts = [
     'fs-initialize=pyfieldsim.pipelines.initialize_field:main',
     'fs-generate-ph-noies=pyfieldsim.pipelines.generate_ph_noise:main',
     'fs-generate-background=pyfieldsim.pipelines.generate_background:main',
+    'fs-generate-gain-map=pyfieldsim.pipelines.generate_gain_map:main',
     'fs-observation=pyfieldsim.pipelines.simulate_observation:main',
 ]
 pymodules = [
@@ -34,6 +35,7 @@ pymodules = [
     'pyfieldsim/pipelines/initialize_field',
     'pyfieldsim/pipelines/generate_ph_noise',
     'pyfieldsim/pipelines/generate_background',
+    'pyfieldsim/pipelines/generate_gain_map',
     'pyfieldsim/pipelines/simulate_observation',
 ]
 

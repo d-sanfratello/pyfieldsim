@@ -19,6 +19,9 @@ def main():
                         help="takes a field with photon noise contamination "
                              "and determines a certain level of background "
                              "noise from a SNR.")
+    parser.add_argument("--fs-generate-gain-map", action='store_true',
+                        help="initializes a gain map matrix for the "
+                             "simulated CCD sensor.")
 
     args = parser.parse_args()
 

@@ -25,6 +25,9 @@ def main():
     parser.add_argument("--fs-generate-dark-current", action='store_true',
                         help="initializes a dark current matrix for the "
                              "simulated CCD sensor.")
+    parser.add_argument("--fs-simulate-observation", action='store_true',
+                        help="simulates a complete observation of the field, "
+                             "with a certain psf.")
 
     args = parser.parse_args()
 

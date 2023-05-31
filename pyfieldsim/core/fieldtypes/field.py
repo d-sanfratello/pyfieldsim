@@ -71,7 +71,15 @@ class Field:
                 file.attrs['k'] = str(v)
 
     def __mul__(self, other):
-        new_field = self.field * other
+        if isinstance(other, Field):
+            new_field = other.field * self.field
+        else:
+            new_field = self.field * other
+
+        return new_field
+
+    def __add__(self, other):
+        new_field = self.field + other.field
 
         return new_field
 

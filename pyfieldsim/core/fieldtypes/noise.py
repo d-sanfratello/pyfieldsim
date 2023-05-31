@@ -29,3 +29,41 @@ def ph_noise(sources_file, delta_time):
         gain_map_file=None,
         dk_c_file=None
     )
+
+
+def background(sources_file,
+               snr,
+               sigma=None, rel_var=None):
+    ph_noise_field_filename = 'P' + sources_file[1:]
+    ph_noise_field_file = Field.from_field(ph_noise_field_filename)
+
+    bgst_star = np.max(sources_file.field)
+
+    mean_bgnd = bgst_star / snr
+    if rel_var is not None:
+        sigma = rel_var * mean_bgnd
+    elif sigma is None:
+        raise ValueError("Must pass a sigma or relative sigma value.")
+
+    rng = np.random.default_rng(seed=ph_noise_field_file.metadata['_seed'])
+
+    # Generating the background field to be added to the photon noise
+    # contaminated field.
+    bgnd = rng.normal(
+        loc=mean_bgnd, scale=sigma,
+        size=ph_noise_field_file.metadata['ext_shape']
+    )
+    bgnd = np.where(
+        bgnd < 0, 0, bgnd
+    )
+
+    return Field(
+        bgnd,
+        seed=ph_noise_field_file.metadata['_seed'],
+        sources_file=str(sources_file),
+        ph_noise_file=str(ph_noise_field_file),
+        bkgnd_file=None,
+        psf_file=None,
+        gain_map_file=None,
+        dk_c_file=None
+    )

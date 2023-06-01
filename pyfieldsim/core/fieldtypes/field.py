@@ -37,7 +37,7 @@ class Field:
             }
 
         return Field(
-            field, *{k: v for k, v in metadata.items() if v is not None}
+            field, **{k[1:]: v for k, v in metadata.items() if v is not None}
         )
 
     def __init__(self, field, *,
@@ -68,7 +68,7 @@ class Field:
             field[0:] = self.field
 
             for k, v in self.metadata.items():
-                file.attrs['k'] = str(v)
+                file.attrs[k] = str(v)
 
     def __mul__(self, other):
         if isinstance(other, Field):

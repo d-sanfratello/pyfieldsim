@@ -41,8 +41,7 @@ def main():
     sources_file = Path(args.sources)
     background_field = background(
         sources_file,
-        snr=args.snr,
-        sigma=sigma,
+        snr=args.snr, sigma=sigma,
         rel_var=rel_sigma
     )
 

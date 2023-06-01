@@ -1,17 +1,20 @@
 import numpy as np
 
+from pathlib import Path
+
 from pyfieldsim.core.fieldtypes.field import Field
 
 
 def create_gain_map(sources_file, mean_gain, rel_var):
-    sources_file = Field.from_field(sources_file)
+    sources_file = Path(sources_file)
+    sources_file = Field.from_sources(sources_file)
 
     rng = np.random.default_rng(seed=sources_file.metadata['_seed'])
 
     # Generating the gain map field to be multiply the read data.
     gain_map = rng.normal(
         loc=mean_gain, scale=rel_var * mean_gain,
-        size=sources_file.metadata['ext_shape']
+        size=sources_file.field.shape
     )
 
     gain_map = np.where(gain_map < 0, 0, gain_map)
@@ -33,7 +36,8 @@ def create_dark_current(
         b_fraction=0.1,
         rel_var=0.01
 ):
-    background_filename = 'B' + sources_file[1:]
+    sources_file = Path(sources_file)
+    background_filename = 'B' + sources_file.name[1:]
     background_file = Field.from_field(background_filename)
 
     rng = np.random.default_rng(seed=background_file.metadata['_seed'])
@@ -44,7 +48,7 @@ def create_dark_current(
     # Generating the dark current field for the simulated CCD.
     dk_c_field = rng.normal(
         loc=dk_c_mean, scale=rel_var * dk_c_mean,
-        size=background_file.metadata['ext_shape']
+        size=background_file.field.shape
     )
 
     dk_c_field = np.where(dk_c_field < 0, 0, dk_c_field)

@@ -30,13 +30,13 @@
 
 import argparse as ag
 import os
+import scipy.signal as scipysig
 
 from pathlib import Path
 
-from scipy.signal import scipysig
-
 from pyfieldsim.core.fieldtypes.field import Field
 from pyfieldsim.core.psf import GaussKernel
+
 
 def main():
     parser = ag.ArgumentParser(
@@ -65,7 +65,7 @@ def main():
     dark_current_filename = 'C' + sources_file.name[1:]
 
     observation_filename = 'O' + sources_file.name[1:]
-    filename = out_folder.joinpath(observation_filename)
+    observation_filename = out_folder.joinpath(observation_filename)
 
     ph_noise_contaminated = Field.from_field(ph_noise_contaminated_filename)
     background = Field.from_field(background_filename)
@@ -76,7 +76,7 @@ def main():
 
     noise_contaminated = ph_noise_contaminated + background
     field_w_psf = scipysig.convolve2d(
-        noise_contaminated.field,
+        noise_contaminated,
         psf.kernel,
         mode='same'
     )
@@ -86,9 +86,6 @@ def main():
         sources_file=sources_file,
         ph_noise_file=ph_noise_contaminated_filename,
         bkgnd_file=background_filename,
-        # psf_file=None,
-        # gain_map_file=gain_map_filename,
-        # dk_c_file=dark_current_filename
     )
     field_w_gain_map = Field(
         gain_map * field_w_psf,
@@ -96,20 +93,17 @@ def main():
         sources_file=sources_file,
         ph_noise_file=ph_noise_contaminated_filename,
         bkgnd_file=background_filename,
-        # psf_file=None,
         gain_map_file=gain_map_filename,
-        # dk_c_file=dark_current_filename
     )
     field_w_dk_current = Field(
-            field_w_gain_map + dark_current,
-            seed=ph_noise_contaminated.metadata['_seed'],
-            sources_file=sources_file,
-            ph_noise_file=ph_noise_contaminated_filename,
-            bkgnd_file=background_filename,
-            # psf_file=None,
-            gain_map_file=gain_map_filename,
-            dk_c_file=dark_current_filename
-        )
+        field_w_gain_map + dark_current,
+        seed=ph_noise_contaminated.metadata['_seed'],
+        sources_file=sources_file,
+        ph_noise_file=ph_noise_contaminated_filename,
+        bkgnd_file=background_filename,
+        gain_map_file=gain_map_filename,
+        dk_c_file=dark_current_filename
+    )
 
     field_w_dk_current.export_field(filename=observation_filename)
 

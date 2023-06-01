@@ -12,3 +12,14 @@ def read_metadata(sources_file):
         }
 
     return metadata
+
+
+def save_metadata(metadata, filename):
+    filename = Path(filename)
+    filename.rename(filename.name + '_meta')
+    if filename.suffix.lower() != '.h5':
+        filename = filename.with_suffix('.h5')
+
+    with h5py.File(filename, "w") as file:
+        for k, v in metadata.items():
+            file.attrs[k] = str(v)

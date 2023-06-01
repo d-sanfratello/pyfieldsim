@@ -1,9 +1,12 @@
 import numpy as np
 
+from pathlib import Path
+
 from pyfieldsim.core.fieldtypes.field import Field
 
 
 def ph_noise(sources_file, delta_time):
+    sources_file = Path(sources_file)
     sources_field = Field.from_sources(sources_file)
 
     rng = np.random.default_rng(seed=sources_field.metadata['_seed'])
@@ -34,10 +37,11 @@ def ph_noise(sources_file, delta_time):
 def background(sources_file,
                snr,
                sigma=None, rel_var=None):
-    ph_noise_field_filename = 'P' + sources_file[1:]
+    sources_file = Path(sources_file)
+    ph_noise_field_filename = 'P' + sources_file.name[1:]
     ph_noise_field_file = Field.from_field(ph_noise_field_filename)
 
-    bgst_star = np.max(sources_file.field)
+    bgst_star = np.max(ph_noise_field_file.field)
 
     mean_bgnd = bgst_star / snr
     if rel_var is not None:
@@ -51,7 +55,7 @@ def background(sources_file,
     # contaminated field.
     bgnd = rng.normal(
         loc=mean_bgnd, scale=sigma,
-        size=ph_noise_field_file.metadata['ext_shape']
+        size=ph_noise_field_file.field.shape,
     )
     bgnd = np.where(
         bgnd < 0, 0, bgnd
@@ -61,7 +65,7 @@ def background(sources_file,
         bgnd,
         seed=ph_noise_field_file.metadata['_seed'],
         sources_file=str(sources_file),
-        ph_noise_file=str(ph_noise_field_file),
+        ph_noise_file=ph_noise_field_filename,
         bkgnd_file=None,
         psf_file=None,
         gain_map_file=None,

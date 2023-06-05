@@ -11,12 +11,20 @@ def read_metadata(sources_file):
             k: v for k, v in f.attrs.items()
         }
 
+    for k, v in metadata.items():
+        if k in ['seed']:
+            metadata[k] = int(v)
+        elif k in ['ext_shape', 'pad', 'shape']:
+            metadata[k] = eval(v)
+        else:
+            metadata[k] = float(v)
+
     return metadata
 
 
 def save_metadata(metadata, filename):
     filename = Path(filename)
-    filename.rename(filename.name + '_meta')
+    filename = Path(filename.stem + '_meta').with_suffix('.h5')
     if filename.suffix.lower() != '.h5':
         filename = filename.with_suffix('.h5')
 

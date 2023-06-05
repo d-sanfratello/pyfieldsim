@@ -25,11 +25,13 @@ with open("requirements.txt") as requires_file:
 scripts = [
     'fs-help=pyfieldsim.pipelines.help:main',
     'fs-initialize=pyfieldsim.pipelines.initialize_field:main',
-    'fs-generate-ph-noies=pyfieldsim.pipelines.generate_ph_noise:main',
+    'fs-generate-ph-noise=pyfieldsim.pipelines.generate_ph_noise:main',
     'fs-generate-background=pyfieldsim.pipelines.generate_background:main',
     'fs-generate-gain-map=pyfieldsim.pipelines.generate_gain_map:main',
     'fs-generate-dark-current=pyfieldsim.pipelines.generate_dark_current:main',
     'fs-observation=pyfieldsim.pipelines.simulate_observation:main',
+    'fs-count-stars=pyfieldsim.pipelines.count_stars:main',
+    'fs-plot=pyfieldsim.pipelines.plot:main',
 ]
 pymodules = [
     'pyfieldsim/pipelines/help',
@@ -39,6 +41,8 @@ pymodules = [
     'pyfieldsim/pipelines/generate_gain_map',
     'pyfieldsim/pipelines/generate_dark_current',
     'pyfieldsim/pipelines/simulate_observation',
+    'pyfieldsim/pipelines/count_stars',
+    'pyfieldsim/pipelines/plot',
 ]
 
 setup(

@@ -10,7 +10,7 @@ def create_gain_map(sources_file, mean_gain, rel_var):
     sources_file = Path(sources_file)
     sim_meta = read_metadata(sources_file)
 
-    rng = np.random.default_rng(seed=sim_meta['_seed'])
+    rng = np.random.default_rng(seed=sim_meta['seed'])
 
     # Generating the gain map field to be multiply the read data.
     gain_map = rng.normal(
@@ -32,7 +32,7 @@ def create_gain_map(sources_file, mean_gain, rel_var):
 
     return Field(
         gain_map,
-        seed=sim_meta['_seed'],
+        seed=sim_meta['seed'],
         sources_file=str(sources_file),
         ph_noise_file='P' + str(sources_file)[1:],
         bkgnd_file='B' + str(sources_file)[1:],
@@ -51,7 +51,7 @@ def create_dark_current(sources_file,
 
     sim_meta = read_metadata(sources_file)
 
-    rng = np.random.default_rng(seed=sim_meta['_seed'])
+    rng = np.random.default_rng(seed=sim_meta['seed'])
 
     b_mean = np.mean(background_file.field)
     dk_c_mean = b_mean * b_fraction
@@ -76,7 +76,7 @@ def create_dark_current(sources_file,
 
     return Field(
         dk_c_field,
-        seed=sim_meta['_seed'],
+        seed=sim_meta['seed'],
         sources_file=str(sources_file),
         ph_noise_file='P' + str(sources_file)[1:],
         bkgnd_file='B' + str(sources_file)[1:],

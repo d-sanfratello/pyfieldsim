@@ -44,3 +44,14 @@ class UnexpectedDatatypeError(Exception):
 class IncompleteImageError(Exception):
     def __str__(self):
         return "Cannot perform operation on an incomplete image."
+
+
+class WrongDataFileError(Exception):
+    def __init__(self, msg=None):
+        if msg is None:
+            self.msg = "Wrong data file."
+        else:
+            self.msg = msg
+
+    def __str__(self):
+        return self.msg

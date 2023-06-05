@@ -29,7 +29,7 @@ def main():
     sources_file = Path(args.sources)
     w_ph_noise = ph_noise(
         sources_file=sources_file,
-        delta_time=args.delta_time
+        delta_time=float(args.delta_time)
     )
 
     filename = 'P' + sources_file.name[1:]

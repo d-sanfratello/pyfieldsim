@@ -5,7 +5,8 @@ import numpy as np
 
 from pathlib import Path
 
-from pyfieldsim.core.skysource import SkySource
+from pyfieldsim.utils.metadata import save_metadata
+
 from pyfieldsim.errors.exceptions import WrongShapeError
 
 
@@ -293,8 +294,10 @@ class Sources:
             )
             mag_dset[0:] = self.magnitude
 
-            for k, v in self.metadata.items():
-                file.attrs[k] = v
+            save_metadata(
+                metadata=self.metadata,
+                filename=filename
+            )
 
     @property
     def metadata(self):

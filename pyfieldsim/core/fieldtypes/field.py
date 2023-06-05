@@ -3,6 +3,8 @@ import numpy as np
 
 from pathlib import Path
 
+from pyfieldsim.utils.metadata import read_metadata
+
 
 class Field:
     @classmethod
@@ -13,9 +15,9 @@ class Field:
             coords = np.asarray(f['coords'])
             lum = np.asarray(f['luminosity'])
 
-            metadata = {
-                k: v for k, v in f.attrs.items()
-            }
+        metadata = read_metadata(
+            Path(sources_file.stem + '_meta').with_suffix('.h5')
+        )
 
         field = np.zeros(
             shape=metadata['ext_shape']

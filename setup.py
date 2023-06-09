@@ -32,6 +32,7 @@ scripts = [
     'fs-observation=pyfieldsim.pipelines.simulate_observation:main',
     'fs-count-stars=pyfieldsim.pipelines.count_stars:main',
     'fs-eval-background=pyfieldsim.pipelines.find_background:main',
+    'fs-find-stars=pyfieldsim.pipelines.find_stars:main',
     'fs-plot=pyfieldsim.pipelines.plot:main',
 ]
 pymodules = [
@@ -44,6 +45,7 @@ pymodules = [
     'pyfieldsim/pipelines/simulate_observation',
     'pyfieldsim/pipelines/count_stars',
     'pyfieldsim/pipelines/find_background',
+    'pyfieldsim/pipelines/fs-find-stars',
     'pyfieldsim/pipelines/plot',
 ]
 

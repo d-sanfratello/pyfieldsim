@@ -35,6 +35,9 @@ def main():
     parser.add_argument("--fs-eval-background", action='store_true',
                         help="reads the centers and radii of the areas where "
                              "to infer the background and evaluates it.")
+    parser.add_argument("--fs-find-stars", action='store_true',
+                        help="finds the stars in a field, assuming a "
+                             "psf-convoluted field.")
     parser.add_argument("--fs-plot", action='store_true',
                         help="shows the plot of a field.")
 

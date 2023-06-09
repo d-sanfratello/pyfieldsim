@@ -7,8 +7,6 @@ from pathlib import Path
 from pyfieldsim.core.fieldtypes.field import Field
 from pyfieldsim.utils.metadata import read_metadata
 
-# FIXME: S_ and P_ look different. Check?
-
 
 def main():
     parser = ag.ArgumentParser(

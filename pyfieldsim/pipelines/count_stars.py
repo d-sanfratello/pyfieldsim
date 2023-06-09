@@ -1,4 +1,5 @@
 import argparse as ag
+import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -111,6 +112,17 @@ def main():
         )
 
         plt.legend(loc='best')
+
+        with h5py.File(out_folder.joinpath('P_recovered.h5'), 'w') as f:
+            l_dset = f.create_dataset('luminosity',
+                                      shape=p_stars.shape,
+                                      dtype=float)
+            l_dset[0:] = p_stars
+
+            c_dset = f.create_dataset('coords',
+                                      shape=p_coords.shape,
+                                      dtype=int)
+            c_dset[0:] = p_coords
 
     fig.savefig(out_folder.joinpath("hist.pdf"))
     plt.show()

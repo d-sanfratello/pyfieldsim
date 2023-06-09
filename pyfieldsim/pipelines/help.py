@@ -32,6 +32,9 @@ def main():
                         help="counts single star in a source or in a "
                              "photon-noise contaminated field. Plots and "
                              "saves an histogram.")
+    parser.add_argument("--fs-eval-background", action='store_true',
+                        help="reads the centers and radii of the areas where "
+                             "to infer the background and evaluates it.")
     parser.add_argument("--fs-plot", action='store_true',
                         help="shows the plot of a field.")
 

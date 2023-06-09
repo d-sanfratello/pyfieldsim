@@ -31,6 +31,7 @@ scripts = [
     'fs-generate-dark-current=pyfieldsim.pipelines.generate_dark_current:main',
     'fs-observation=pyfieldsim.pipelines.simulate_observation:main',
     'fs-count-stars=pyfieldsim.pipelines.count_stars:main',
+    'fs-eval-background=pyfieldsim.pipelines.find_background:main',
     'fs-plot=pyfieldsim.pipelines.plot:main',
 ]
 pymodules = [
@@ -42,6 +43,7 @@ pymodules = [
     'pyfieldsim/pipelines/generate_dark_current',
     'pyfieldsim/pipelines/simulate_observation',
     'pyfieldsim/pipelines/count_stars',
+    'pyfieldsim/pipelines/find_background',
     'pyfieldsim/pipelines/plot',
 ]
 

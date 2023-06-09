@@ -73,6 +73,7 @@ def create_dark_current(sources_file,
     )
 
     dk_c_field = np.where(dk_c_field < 0, 0, dk_c_field)
+    dk_c_field = np.round(dk_c_field, dtype=int)
 
     return Field(
         dk_c_field,

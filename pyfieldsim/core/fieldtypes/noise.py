@@ -96,6 +96,7 @@ def background(sources_file,
     bgnd = np.where(
         bgnd < 0, 0, bgnd
     )
+    bgnd = np.round(bgnd, dtype=int)
 
     return Field(
         bgnd,

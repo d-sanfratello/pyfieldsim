@@ -4,9 +4,14 @@ from pathlib import Path
 
 
 def read_metadata(sources_file):
-    sources_file = Path(sources_file)
+    filename = Path(sources_file)
 
-    with h5py.File(sources_file, 'r') as f:
+    if not filename.stem.endswith('_meta'):
+        filename = Path(
+            filename.stem + '_meta.h5'
+        )
+
+    with h5py.File(filename, 'r') as f:
         metadata = {
             k: v for k, v in f.attrs.items()
         }

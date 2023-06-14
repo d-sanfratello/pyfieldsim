@@ -12,12 +12,12 @@ from pyfieldsim.utils.metadata import read_metadata
 
 def main():
     parser = ag.ArgumentParser(
-        prog='fs-simulate-observation',
+        prog='fs-observation',
         description='',
     )
     parser.add_argument('sources')
     parser.add_argument('-p', action='store_true',
-                        dest='ph_contamianated', default=False,
+                        dest='ph_contaminated', default=False,
                         help="")
     parser.add_argument('-b', action='store_true',
                         dest='background', default=False,
@@ -56,7 +56,7 @@ def main():
 
     if args.background:
         background_filename = 'B' + sources_file.name[1:]
-        background = Field.from_field(background_filename)
+        background = Field.from_field(background_filename).field
 
         field = field + background
     else:
@@ -71,23 +71,34 @@ def main():
         )
 
         field = np.where(field < 0, 0, field)
-        field = np.round(field, dtype=int)
 
     if args.gain_map:
         gain_map_filename = 'G' + sources_file.name[1:]
-        gain_map = Field.from_field(gain_map_filename)
+        gain_map = Field.from_field(gain_map_filename).field
 
-        np.round(gain_map * field, dtype=int)
+        field = gain_map * field
     else:
         gain_map_filename = None
 
+    rng = np.random.default_rng(seed=metadata['seed'])
+    field = rng.poisson(field)
+    field = np.where(
+        field < 0, 0, field
+    )
+
     if args.dark_current:
         dark_current_filename = 'C' + sources_file.name[1:]
-        dark_current = Field.from_field(dark_current_filename)
+        dark_current = Field.from_field(dark_current_filename).field
 
         field = field + dark_current
     else:
         dark_current_filename = None
+
+    pad = metadata['pad']
+    field = field[
+            pad[0]:-pad[0],
+            pad[1]:-pad[1]
+    ]
 
     field = Field(
         field,

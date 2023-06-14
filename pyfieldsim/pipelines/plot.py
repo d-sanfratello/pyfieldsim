@@ -20,6 +20,9 @@ def main():
     parser.add_argument("--crop", action='store_true',
                         dest='crop', default=False,
                         help="")
+    parser.add_argument("--no-log", action='store_true',
+                        dest='no_log', default=False,
+                        help="")
 
     args = parser.parse_args()
 
@@ -48,10 +51,14 @@ def main():
     fig = plt.figure()
     ax = fig.gca()
 
-    img = ax.imshow(np.log10(field.field), origin='upper', cmap='Greys')
+    plot_field = field.field
+    if not args.no_log:
+        plot_field = np.log10(plot_field)
+
+    img = ax.imshow(plot_field, origin='upper', cmap='Greys')
     plt.colorbar(img)
 
-    if args.crop:
+    if args.crop and not data_file.stem.startswith('O'):
         pad = metadata['pad']
         ext_shape = metadata['ext_shape']
 

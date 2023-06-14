@@ -15,9 +15,6 @@ def main():
     parser.add_argument('-b', '--background_fraction', type=float,
                         dest='bgnd_fraction', default=0.1,
                         help='')
-    parser.add_argument('-r', '--relative-sigma', type=float,
-                        dest='rel_var', default=0.05,
-                        help='')
     parser.add_argument("-o", "--output",
                         dest='out_folder', default=None,
                         help="")
@@ -33,7 +30,6 @@ def main():
     dark_current = create_dark_current(
         sources_file,
         b_fraction=args.bgnd_fraction,
-        rel_var=args.rel_var
     )
 
     filename = 'C' + sources_file.name[1:]

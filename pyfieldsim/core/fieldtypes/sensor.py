@@ -43,8 +43,7 @@ def create_gain_map(sources_file, mean_gain, rel_var):
 
 
 def create_dark_current(sources_file,
-                        b_fraction=0.1,
-                        rel_var=0.01):
+                        b_fraction=0.1):
     sources_file = Path(sources_file)
     background_filename = 'B' + sources_file.name[1:]
     background_file = Field.from_field(background_filename)
@@ -57,14 +56,13 @@ def create_dark_current(sources_file,
     dk_c_mean = b_mean * b_fraction
 
     # Generating the dark current field for the simulated CCD.
-    dk_c_field = rng.normal(
-        loc=dk_c_mean, scale=rel_var * dk_c_mean,
+    dk_c_field = rng.poisson(
+        lam=dk_c_mean,
         size=sim_meta['ext_shape']
     )
 
     metadata = {
         "mean": dk_c_mean,
-        "rel_var": rel_var
     }
 
     save_metadata(
@@ -72,8 +70,7 @@ def create_dark_current(sources_file,
         filename='C' + sources_file.name[1:]
     )
 
-    dk_c_field = np.where(dk_c_field < 0, 0, dk_c_field)
-    dk_c_field = np.round(dk_c_field, dtype=int)
+    dk_c_field = np.where(dk_c_field < 0, 0, dk_c_field).astype(int)
 
     return Field(
         dk_c_field,

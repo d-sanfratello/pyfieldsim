@@ -64,7 +64,9 @@ def background(sources_file,
     ph_noise_field_filename = 'P' + sources_file.name[1:]
     ph_noise_field_file = Field.from_field(ph_noise_field_filename)
 
-    sim_meta = read_metadata(sources_file)
+    sim_meta = read_metadata(
+        Path(sources_file.stem + '_meta.h5')
+    )
 
     bgst_star = np.max(ph_noise_field_file.field)
 
@@ -93,10 +95,10 @@ def background(sources_file,
         loc=mean_bgnd, scale=sigma,
         size=sim_meta['ext_shape'],
     )
+    bgnd = rng.poisson(bgnd)
     bgnd = np.where(
         bgnd < 0, 0, bgnd
     )
-    bgnd = np.round(bgnd, dtype=int)
 
     return Field(
         bgnd,

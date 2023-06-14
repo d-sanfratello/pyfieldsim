@@ -117,9 +117,6 @@ class Sources:
             If of type `int`, passes the seed to the pseudo-random number
             generator of numpy. If `None`, numpy generates a seed by itself.
             Default is `None`.
-        datatype: `'luminosity'`, `'mass'` or `'magnitude'`
-            Defines the datatype represented in the field. Default is
-            `'luminosity'`.
 
         Raises
         ------
@@ -152,15 +149,16 @@ class Sources:
         self.__cst_lm = cst_lm
 
         # Random generation of the stars
-        rand_dist = self.__rng.random(self.__n_pixels)
-        coords_arr = np.argwhere(rand_dist <= density).flatten()
+        rand_dist_loc = self.__rng.random(self.__n_pixels)
+        coords_arr = np.argwhere(rand_dist_loc <= density).flatten()
+        rand_dist_mas = self.__rng.random(coords_arr.shape)
 
         self.sources = np.asarray(
             np.unravel_index(coords_arr, self.ext_shape)
         ).T
 
         # Generating masses
-        self.mass = self.__random_cimf(rand_dist[coords_arr])
+        self.mass = self.__random_cimf(rand_dist_mas)
         self.luminosity = self.__lm_relation()
         self.magnitude = self.__l2mag()
 

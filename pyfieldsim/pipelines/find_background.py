@@ -1,13 +1,13 @@
 import argparse as ag
+import os
 
-import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 
 from pathlib import Path
 
 from pyfieldsim.core.fieldtypes.field import Field
-from pyfieldsim.utils.metadata import read_metadata
+from pyfieldsim.utils.metadata import read_metadata, save_metadata
 
 
 def main():
@@ -19,70 +19,89 @@ def main():
     parser.add_argument("-o", "--output",
                         dest='out_folder', default=None,
                         help="")
-    parser.add_argument('-a', '--areas', required=True,
-                        dest='areas',
-                        help="")
 
     args = parser.parse_args()
 
-    out_folder = None
-    if args.out_folder is not None:
-        out_folder = Path(args.out_folder)
-
     data_file = Path(args.data)
     field = Field.from_field(data_file)
-    metadata = read_metadata(
-        Path("S" + data_file.stem[1:] + "_meta").with_suffix('.h5')
+
+    out_folder = Path(os.getcwd())
+    if args.out_folder is not None:
+        out_folder = Path(args.out_folder)
+    out_stem = out_folder.joinpath(data_file.stem + '_bkg_analysis')
+
+    fig, axs = plt.subplots(nrows=2)
+    ax_0, ax_1 = axs.flat
+    ax_0.grid()
+    ax_1.grid()
+
+    px = field.field.flatten()
+    n, bins, patches = ax_0.hist(
+        px,
+        histtype='step',
+        bins=int(np.sqrt(len(px))) // 4,
+    )
+    centers = (bins[:-1] + bins[1:]) / 2
+    dist_norm = (np.diff(bins) * n).sum()
+
+    mean = np.mean(px)
+    std = np.std(px, ddof=1)
+
+    from scipy.stats import norm
+    x = np.arange(bins.min(), bins.max())
+    pdf = norm.pdf(x, mean, std) * dist_norm
+    ax_0.plot(x, pdf)
+
+    ax_0.errorbar(
+        centers, n, np.sqrt(n),
+        linestyle='', capsize=2, color='blue'
+    )
+    ax_0.set_yscale('log')
+    ax_0.set_ylim(1e-1, 10 ** np.ceil(np.log10(px.max())))
+    ax_0.set_xticklabels([])
+
+    ax_0.axvline(mean, 0, 1, color='red', ls='solid')
+    ax_0.axvline(mean + 2.5 * std, 0, 1, color='grey', ls='--',
+                 label=r'2.5$\sigma$')
+    ax_0.axvline(mean + 3 * std, 0, 1, color='grey', ls='-.', alpha=0.5,
+                 label=r'3$\sigma$')
+
+    ax_1.axvline(mean, 0, 1, color='red', ls='solid')
+    ax_1.axvline(mean + 2.5 * std, 0, 1, color='grey', ls='--')
+    ax_1.axvline(mean + 3 * std, 0, 1, color='grey', ls='-.', alpha=0.5)
+
+    expected = norm.pdf(centers, mean, std) * dist_norm
+    err_diffs = (n - expected) / np.sqrt(n)
+    ax_1.scatter(centers, err_diffs, marker='.', color='blue')
+
+    ax_0.legend(loc='best')
+    ax_0.set_xlim(bins.min(), bins.max())
+    ax_1.set_xlim(bins.min(), bins.max())
+
+    ax_0.set_ylabel('Occurrences')
+    ax_1.set_ylabel('Norm. res.')
+    ax_1.set_xlabel('Counts on the sensor')
+
+    plt.tight_layout()
+    fig.savefig(out_stem.with_suffix('.pdf'))
+
+    metadata = {
+        'mean': mean,
+        'std': std,
+        '2.5s': mean + 2.5 * std,
+        '3s': mean + 3 * std
+    }
+
+    save_metadata(
+        metadata,
+        out_stem.with_suffix('.h5')
     )
 
-    areas = eval(args.areas)
-    shape = metadata['shape']
-    grid = np.asarray([x for x in np.ndindex(shape)])
-
-    b_mean = np.inf
-    b_std = None
-    region = None
-    for a in areas:
-        c, r = a
-        c = np.array([c[1], c[0]])
-
-        valid_coords = np.asarray([
-            x for x in grid if np.linalg.norm([c, x]) <= r
-        ])
-
-        b_values = np.asarray([field.field[x[0], x[1]] for x in valid_coords])
-
-        if b_values.mean() < b_mean:
-            b_mean = b_values.mean()
-            b_std = b_values.std(ddof=1)
-            region = (c, r)
-        elif b_values.mean() == b_mean and b_values.std(ddof=1) >= b_std:
-            b_mean = b_values.mean()
-            b_std = b_values.std(ddof=1)
-            region = ((c[0], c[1]), r)
-
-    with h5py.File(
-            out_folder.joinpath(data_file.stem[1:] + '_bgnd_mean.h5')
-    ) as f:
-        region_dset = f.create_dataset('region',
-                                       dtype=int, shape=(2,))
-        region_dset[0:] = np.array(region[0])
-
-        radius_dset = f.create_dataset('radius',
-                                       dtype=float,
-                                       shape=(1,))
-        radius_dset[0:] = region[1]
-
-        bgnd_dset = f.create_dataset('background',
-                                     dtype=float,
-                                     shape=(2,))
-        bgnd_dset[0:] = np.array([b_mean, b_std])
-
-    print(f"background from region: c = {region[0]}, r = {region[1]}")
-    print(f"=====")
-    print(f"b = {b_mean} +- {b_std}")
-
-    return
+    print('Background analysis')
+    print('=====')
+    for k, v in metadata.items():
+        print(f'{k}  \t{v}')
+    print('=====')
 
 
 if __name__ == "__main__":

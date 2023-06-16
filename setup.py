@@ -2,13 +2,13 @@ import numpy as np
 from setuptools import setup
 from codecs import open
 
-# try:
-#     import cpnest
-# except ImportError:
-#     raise Exception(
-#         "This package needs `cpnest`. To install it follow instructions at"
-#         "https://github.com/johnveitch/cpnest/tree/massively_parallel."
-#     )
+try:
+    import cpnest
+except ImportError:
+    raise Exception(
+        "This package needs `cpnest`. To install it follow instructions at"
+        "https://github.com/johnveitch/cpnest/tree/massively_parallel."
+    )
 
 # try:
 #     import figaro
@@ -45,7 +45,7 @@ pymodules = [
     'pyfieldsim/pipelines/simulate_observation',
     'pyfieldsim/pipelines/count_stars',
     'pyfieldsim/pipelines/find_background',
-    'pyfieldsim/pipelines/fs-find-stars',
+    'pyfieldsim/pipelines/find_stars',
     'pyfieldsim/pipelines/plot',
 ]
 

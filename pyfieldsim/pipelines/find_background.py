@@ -1,8 +1,9 @@
 import argparse as ag
-import os
-
 import matplotlib.pyplot as plt
 import numpy as np
+import os
+
+from scipy.stats import norm
 
 from pathlib import Path
 
@@ -47,7 +48,6 @@ def main():
     mean = np.mean(px)
     std = np.std(px, ddof=1)
 
-    from scipy.stats import norm
     x = np.arange(bins.min(), bins.max())
     pdf = norm.pdf(x, mean, std) * dist_norm
     ax_0.plot(x, pdf)
@@ -61,13 +61,16 @@ def main():
     ax_0.set_xticklabels([])
 
     ax_0.axvline(mean, 0, 1, color='red', ls='solid')
-    ax_0.axvline(mean + 2.5 * std, 0, 1, color='grey', ls='--',
+    ax_0.axvline(mean + std, 0, 1, color='grey', ls='-',
+                 label=r'1$\sigma$')
+    ax_0.axvline(mean + 2.5 * std, 0, 1, color='grey', ls='--', alpha=0.75,
                  label=r'2.5$\sigma$')
     ax_0.axvline(mean + 3 * std, 0, 1, color='grey', ls='-.', alpha=0.5,
                  label=r'3$\sigma$')
 
     ax_1.axvline(mean, 0, 1, color='red', ls='solid')
-    ax_1.axvline(mean + 2.5 * std, 0, 1, color='grey', ls='--')
+    ax_1.axvline(mean + std, 0, 1, color='grey', ls='-')
+    ax_1.axvline(mean + 2.5 * std, 0, 1, color='grey', ls='--', alpha=0.75)
     ax_1.axvline(mean + 3 * std, 0, 1, color='grey', ls='-.', alpha=0.5)
 
     expected = norm.pdf(centers, mean, std) * dist_norm

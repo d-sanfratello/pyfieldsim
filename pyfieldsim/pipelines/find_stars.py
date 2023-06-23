@@ -11,7 +11,7 @@ import scipy.special as ssp
 from cpnest.model import Model
 from pathlib import Path
 from scipy.stats import multivariate_normal as mvn
-from scipy.stats import poisson
+from scipy.stats import poisson, norm
 
 from pyfieldsim.core.fieldtypes.field import Field
 from pyfieldsim.utils.metadata import read_metadata
@@ -81,70 +81,154 @@ def main():
     b_limit = bkgnd_analysis_metadata['mean'] \
         + args.b_limit * bkgnd_analysis_metadata['std']
     A_bounds = [
-        [b_limit, 2 * brt]
+        [0, 10 * brt]
+    ]
+    b_bounds = [
+        [0, bkgnd_analysis_metadata['mean'] \
+            + 3 * bkgnd_analysis_metadata['std']
+         ]
     ]
 
     # 4 - Find one star within this radius.
-    bounds = A_bounds + m_bounds + s_bounds
+    bounds = A_bounds + m_bounds + s_bounds + b_bounds
 
     fit_model_1 = FindPsf(
-        valid_coords, valid_counts, args.b_mean, bounds
+        valid_coords, valid_counts,
+        (bkgnd_analysis_metadata['mean'], bkgnd_analysis_metadata['std']),
+        bounds
     )
 
-    work = cpnest.CPNest(
-        fit_model_1,
-        verbose=2,
-        nlive=1000,  # 1000
-        maxmcmc=5000,  # 5000
-        nensemble=4,
-        output='./sampling_output_psf1/',
-    )
-    work.run()
-    post_1 = work.posterior_samples.ravel()
+    psf1_path = Path('./sampling_output_psf1/')
+    if not psf1_path.exists():  #
+        work = cpnest.CPNest(
+            fit_model_1,
+            verbose=2,
+            nlive=500,  # 1000
+            maxmcmc=5000,  # 5000
+            nensemble=4,
+            output=psf1_path,
+        )
+        work.run()
+        post_1 = work.posterior_samples.ravel()
+
+        logZ_1 = work.logZ
+    else:
+        with h5py.File(psf1_path.joinpath('cpnest.h5'), 'r') as f:
+            post_1 = np.asarray(f['combined']['posterior_samples'])
+
+            logZ_1 = np.asarray(f['combined']['logZ']).reshape((1,))[0]
 
     logZ_psf = {
-        '1': work.logZ
+        '1': logZ_1
     }
 
-    fig, ax = plt.subplots()
-    ax.imshow(data_field.field, origin='upper')
-    ax.scatter(
-        np.median(post_1['mu_y']), np.median(post_1['mu_x']),
+    columns = [post_1[par] for par in post_1.dtype.names
+               if par not in ['logL', 'logPrior']]
+    samples = np.column_stack(columns)
+
+    from corner import corner
+    c = corner(
+        samples,
+        labels=[f'{par}' for par in post_1.dtype.names
+                if par not in ['logL', 'logPrior']],
+        quantiles=[0.16, 0.5, 0.84],
+        use_math_text=True,
+        show_titles=True,
+    )
+    c.savefig(
+        out_folder.joinpath(f'joint_posterior_psf1.pdf'),
+        bbox_inches='tight'
     )
 
-    fig, ax = plt.subplots()
-    ax.imshow(data_field.field, origin='upper')
-    plt.show()
-
-    sys.exit(0)
     # 4b - Check against two or three gaussians in the same dataset. Compare
     # evidences.
+    bounds = A_bounds + m_bounds + s_bounds + b_bounds
+
     fit_model_2 = FindPsf2(
-        valid_coords, valid_counts, args.b_mean, bounds
+        valid_coords, valid_counts,
+        (bkgnd_analysis_metadata['mean'], bkgnd_analysis_metadata['std']),
+        bounds
     )
 
-    work = cpnest.CPNest(
-        fit_model_2,
-        verbose=2,
-        nlive=1000,  # 1000
-        maxmcmc=5000,  # 5000
-        nensemble=4,
-        output='./sampling_output_psf2/',
-    )
-    work.run()
-    post_2 = work.posterior_samples.ravel()
+    psf2_path = Path('./sampling_output_psf2/')
+    if not psf2_path.exists():
+        work = cpnest.CPNest(
+            fit_model_2,
+            verbose=2,
+            nlive=100,  # 1000
+            maxmcmc=1000,  # 5000
+            nensemble=1,
+            output='./sampling_output_psf2/',
+        )
+        work.run()
+        post_2 = work.posterior_samples.ravel()
 
-    logZ_psf['2'] = work.logZ
+        logZ_2 = work.logZ
+    else:
+        with h5py.File(psf2_path.joinpath('cpnest.h5'), 'r') as f:
+            post_2 = np.asarray(f['combined']['posterior_samples'])
+
+            logZ_2 = np.asarray(f['combined']['logZ']).reshape((1,))[0]
+
+    logZ_psf['2'] = logZ_2
+
+    columns = [post_2[par] for par in post_2.dtype.names
+               if par not in ['logL', 'logPrior']]
+    samples = np.column_stack(columns)
+
+    c = corner(
+        samples,
+        labels=[f'{par}' for par in post_2.dtype.names
+                if par not in ['logL', 'logPrior']],
+        quantiles=[0.16, 0.5, 0.84],
+        use_math_text=True,
+        show_titles=True,
+    )
+    c.savefig(
+        out_folder.joinpath(f'joint_posterior_psf2.pdf'),
+        bbox_inches='tight'
+    )
 
     stars = []
     if logZ_psf['1'] >= logZ_psf['2']:
-        # stars.append[new_star()]
-        pass
+        stars.append(
+            new_star(
+                A=np.median(post_1['A']),
+                mu=[
+                    np.median(post_1['mu_y']),
+                    np.median(post_1['mu_x'])
+                ],
+                sigma=np.median(post_1['sigma']) * np.eye(2)
+            )
+        )
     else:
-        pass
+        sigma = np.median(post_2['sigma']) * np.eye(2)
+        for _ in range(2):
+            stars.append(
+                new_star(
+                    A=np.median(post_2[f'A{_}']),
+                    mu=[
+                        np.median(post_2[f'mu_y{_}']),
+                        np.median(post_2[f'mu_x{_}'])
+                    ],
+                    sigma=sigma
+                )
+            )
+
+    fig, ax = plt.subplots()
+    ax.imshow(data_field.field, cmap='Greys', origin='upper')
+    for s in stars:
+        ax.scatter(s.mu[0], s.mu[1], marker='+', color='red')
+
+    fig.savefig(
+        out_folder.joinpath(f'recovered_psf_star.pdf'),
+        bbox_inches='tight'
+    )
 
     # 5 - Remove all points within 3s from the mean (or each mean) from the
     # dataset.
+    reached_background = False
+
 
     # 6 - Find next brightest star and select all points in a circle around
     # 5σ from the bright point.
@@ -190,9 +274,10 @@ class FindPsf(Model):
     def __init__(self, coords, counts, background, bounds):
         self.coords = coords
         self.c = counts
-        self.bkgnd = background
+        self.bkgnd = background[0]
+        self.bkgnd_std = background[1]
 
-        self.names = ['A', 'mu_x', 'mu_y', 'sigma']
+        self.names = ['A', 'mu_x', 'mu_y', 'sigma', 'b']
         self.bounds = bounds
 
         self.n_pts = len(counts)
@@ -201,6 +286,9 @@ class FindPsf(Model):
         log_p = super(FindPsf, self).log_prior(param)
         if np.isfinite(log_p):
             log_p = 0.
+            log_p += norm.logpdf(param['b'],
+                                 loc=self.bkgnd,
+                                 scale=self.bkgnd_std)
 
         return log_p
 
@@ -209,9 +297,11 @@ class FindPsf(Model):
         mu_x = param['mu_x']
         mu_y = param['mu_y']
         sigma = param['sigma']
+        b = param['b']
 
         star = mvn(mean=[mu_x, mu_y], cov=sigma*np.eye(2))
-        c_hat = A * star.pdf(self.coords) + self.bkgnd
+        # c_hat = A * star.pdf(self.coords) + self.bkgnd
+        c_hat = A * star.pdf(self.coords) + b
 
         likel = poisson.logpmf(self.c, c_hat)
 
@@ -220,24 +310,35 @@ class FindPsf(Model):
 
 class FindPsf2(Model):
     def __init__(self, coords, counts, background, bounds):
-        self.coords = coords
-        self.c = counts
-        self.bkgnd = background
+        self.coords = np.asarray(coords).astype(int)
+        self.c = np.asarray(counts).astype(int)
+        self.bkgnd = background[0]
+        self.bkgnd_std = background[1]
 
-        self.names = ['A0', 'A1', 'mu_x0', 'mu_y0', 'mu_x1', 'mu_y1', 'sigma']
+        self.names = [
+            'A0', 'A1',
+            'mu_x0', 'mu_y0',
+            'mu_x1', 'mu_y1',
+            'sigma', 'b'
+        ]
         self.bounds = [
             bounds[0], bounds[0],
             bounds[1], bounds[1],
-            bounds[2], bounds[2],
-            bounds[3]
+            bounds[1], bounds[1],
+            bounds[2],
+            bounds[3],
         ]
 
         self.n_pts = len(counts)
 
     def log_prior(self, param):
         log_p = super(FindPsf2, self).log_prior(param)
+
         if np.isfinite(log_p):
             log_p = 0.
+            log_p += norm.logpdf(param['b'],
+                                 loc=self.bkgnd,
+                                 scale=self.bkgnd_std)
 
         return log_p
 
@@ -249,12 +350,13 @@ class FindPsf2(Model):
         mu_x1 = param['mu_x1']
         mu_y1 = param['mu_y1']
         sigma = param['sigma']
+        b = param['b']
 
         star0 = mvn(mean=[mu_x0, mu_y0], cov=sigma * np.eye(2))
         star1 = mvn(mean=[mu_x1, mu_y1], cov=sigma * np.eye(2))
         c_hat = A0 * star0.pdf(self.coords) \
             + A1 * star1.pdf(self.coords) \
-            + self.bkgnd
+            + b
 
         likel = poisson.logpmf(self.c, c_hat)
 
@@ -337,8 +439,22 @@ def dist(x1, x2):
     return d
 
 
+class Star:
+    def __init__(self, A, mu, sigma):
+        self.A = A
+        self.mu = mu
+        self.sigma = sigma
+
+        self.dist = mvn(
+            mean=[self.mu[0], self.mu[1]],
+            cov=self.sigma * np.eye(2))
+
+    def __call__(self, x):
+        return self.A * mvn.pdf(x)
+
+
 def new_star(A, mu, sigma):
-    return A * mvn(mean=[mu[0], mu[1]], cov=sigma * np.eye(2))
+    return Star(A, mu, sigma)
 
 
 if __name__ == "__main__":

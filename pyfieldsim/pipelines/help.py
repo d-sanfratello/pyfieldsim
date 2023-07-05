@@ -40,6 +40,8 @@ def main():
                              "psf-convoluted field.")
     parser.add_argument("--fs-plot", action='store_true',
                         help="shows the plot of a field.")
+    parser.add_argument("--fs-show-meta", action='store_true',
+                        help="shows the metadata associated with some file.")
 
     args = parser.parse_args()
 

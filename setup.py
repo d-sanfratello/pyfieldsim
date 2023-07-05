@@ -34,6 +34,7 @@ scripts = [
     'fs-eval-background=pyfieldsim.pipelines.find_background:main',
     'fs-find-stars=pyfieldsim.pipelines.find_stars:main',
     'fs-plot=pyfieldsim.pipelines.plot:main',
+    'fs-show-meta=pyfieldsim.pipelines.read_metadata:main',
 ]
 pymodules = [
     'pyfieldsim/pipelines/help',
@@ -47,6 +48,7 @@ pymodules = [
     'pyfieldsim/pipelines/find_background',
     'pyfieldsim/pipelines/find_stars',
     'pyfieldsim/pipelines/plot',
+    'pyfieldsim/pipelines/read_metadata',
 ]
 
 setup(

@@ -77,6 +77,7 @@ def background(sources_file,
         raise ValueError("Must pass a sigma or relative sigma value.")
 
     metadata = {
+        "snr": snr,
         "mean": mean_bgnd,
         "sigma": sigma,
         "rel_var": rel_var

@@ -29,8 +29,9 @@ class GaussKernel(Kernel):
 
         xx, yy = np.meshgrid(x_axis, y_axis, sparse=True)
 
-        return np.exp(-0.5 * (xx**2 + yy**2)) \
-            / (2 * np.pi * self.width_x * self.width_y)
+        return np.exp(
+            -0.5 * ((xx/self.width_x) ** 2 + (yy/self.width_y) ** 2)
+        ) / (2 * np.pi * self.width_x * self.width_y)
 
 
 class AsymmGaussKernel(Kernel):

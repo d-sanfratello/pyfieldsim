@@ -54,10 +54,10 @@ def main():
 
     ax_0.errorbar(
         centers, n, np.sqrt(n),
-        linestyle='', capsize=2, color='blue'
+        linestyle='', capsize=2, color='blue', marker='.'
     )
     ax_0.set_yscale('log')
-    ax_0.set_ylim(1e-1, 10 ** np.ceil(np.log10(px.max())))
+    ax_0.set_ylim(1e-1, 10 ** np.ceil(np.log10(n.max())))
     ax_0.set_xticklabels([])
 
     ax_0.axvline(mean, 0, 1, color='red', ls='solid')

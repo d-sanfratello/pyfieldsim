@@ -63,7 +63,7 @@ def main():
         background_filename = None
 
     if args.psf_width is not None:
-        psf = GaussKernel(sigma=args.psf_width)
+        psf = GaussKernel(sigma=args.psf_width, size=5)
         field = scipysig.convolve2d(
             field,
             psf.kernel,

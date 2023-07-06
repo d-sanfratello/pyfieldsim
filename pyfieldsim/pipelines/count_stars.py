@@ -75,12 +75,10 @@ def main():
         sources_field = Field.from_sources(data_file)
     elif data_file.name.startswith('P'):
         sources = False
+        sources_data_file = Path('S' + data_file.stem[1:]).with_suffix('.h5')
 
-        sources_data_file = Field.from_sources(
-            Path('S' + data_file.stem[1:]).with_suffix('.h5')
-        )
         sources_metadata = read_metadata(sources_data_file)
-        sources_field = Field.from_sources(data_file)
+        sources_field = Field.from_sources(sources_data_file)
 
         p_metadata = Path(data_file.stem + '_meta').with_suffix('.h5')
         p_metadata = read_metadata(p_metadata)

@@ -14,6 +14,7 @@ from scipy.stats import multivariate_normal as mvn
 from scipy.stats import poisson, norm
 
 from pyfieldsim.core.fieldtypes.field import Field
+from pyfieldsim.core.stars import new_star
 from pyfieldsim.utils.metadata import read_metadata, save_metadata
 
 
@@ -667,24 +668,6 @@ def dist(x1, x2):
 
     d = np.sqrt(((x2 - x1) ** 2).sum())
     return d
-
-
-class Star:
-    def __init__(self, A, mu, sigma):
-        self.A = A
-        self.mu = mu
-        self.sigma = sigma
-
-        self.dist = mvn(
-            mean=[self.mu[0], self.mu[1]],
-            cov=self.sigma * np.eye(2))
-
-    def __call__(self, x):
-        return self.A * mvn.pdf(x)
-
-
-def new_star(A, mu, sigma):
-    return Star(A, mu, sigma)
 
 
 def save_stars(stars, data_file, options=None):

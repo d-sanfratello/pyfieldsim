@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 
 from pyfieldsim.core.fieldtypes.field import Field
+from pyfieldsim.core.stars import new_point_star
 from pyfieldsim.utils.metadata import read_metadata
 
 from pyfieldsim.errors.exceptions import WrongDataFileError
@@ -113,7 +114,7 @@ def main():
 
         plt.legend(loc='best')
 
-        with h5py.File(out_folder.joinpath('P_recovered.h5'), 'w') as f:
+        with h5py.File(out_folder.joinpath('P_recovered_meta.h5'), 'w') as f:
             l_dset = f.create_dataset('luminosity',
                                       shape=p_stars.shape,
                                       dtype=float)
@@ -124,7 +125,7 @@ def main():
                                       dtype=int)
             c_dset[0:] = p_coords
 
-    with h5py.File(out_folder.joinpath('S_recovered.h5'), 'w') as f:
+    with h5py.File(out_folder.joinpath('S_recovered_meta.h5'), 'w') as f:
         l_dset = f.create_dataset('luminosity',
                                   shape=s_stars.shape,
                                   dtype=float)

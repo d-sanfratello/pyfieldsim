@@ -2,7 +2,7 @@ import numpy as np
 
 from scipy.stats import multivariate_normal as mvn
 
-from point_star import PointStar
+from .point_star import PointStar
 
 
 class Star(PointStar):

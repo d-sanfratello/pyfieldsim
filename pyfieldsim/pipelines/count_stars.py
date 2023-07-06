@@ -17,10 +17,7 @@ def main():
         prog='fs-count-stars',
         description='',
     )
-    parser.add_argument('sources')
-    parser.add_argument("-d", "--data",
-                        dest='data_file', default=None,
-                        help="")
+    parser.add_argument('data_file')
     parser.add_argument("-o", "--output",
                         dest='out_folder', default=None,
                         help="")
@@ -32,7 +29,7 @@ def main():
     else:
         out_folder = Path(args.out_folder)
 
-    sources_file = Path(args.sources)
+    data_file = Path(args.data_file)
 
     """
     Method that counts the stars in a given field, if the `ImageStatus` of
@@ -70,28 +67,31 @@ def main():
     --------
     `field.Field`, `utils.DataType` and `utils.ImageStatus`.
     """
-    data_file = sources_file
-    if args.data_file is not None:
-        data_file = Path(args.data_file)
-
     if data_file.name.startswith('S'):
         sources = True
+
+        sources_metadata = read_metadata(data_file)
+        sources_field = Field.from_sources(data_file)
     elif data_file.name.startswith('P'):
         sources = False
+
+        sources_data_file = Field.from_sources(
+            Path('S' + data_file.stem[1:]).with_suffix('.h5')
+        )
+        sources_metadata = read_metadata(sources_data_file)
+        sources_field = Field.from_sources(data_file)
+
+        p_metadata = Path(data_file.stem + '_meta').with_suffix('.h5')
+        p_metadata = read_metadata(p_metadata)
     else:
         raise WrongDataFileError(
             "File must be either sources ('S') or photon noise contaminated "
             "('P')."
         )
-
-    sources_metadata = read_metadata(sources_file)
-    sources_field = Field.from_sources(sources_file)
-
     s_stars, s_coords = find_stars(sources_field, sources_metadata)
-    p_metadata = Path(data_file.stem + '_meta').with_suffix('.h5')
-    p_metadata = read_metadata(p_metadata)
 
-    s_stars = s_stars * float(p_metadata['delta_time'])
+    if not sources:
+        s_stars = s_stars * float(p_metadata['delta_time'])
 
     fig = plt.figure()
     ax = fig.gca()
@@ -123,6 +123,17 @@ def main():
                                       shape=p_coords.shape,
                                       dtype=int)
             c_dset[0:] = p_coords
+
+    with h5py.File(out_folder.joinpath('S_recovered.h5'), 'w') as f:
+        l_dset = f.create_dataset('luminosity',
+                                  shape=s_stars.shape,
+                                  dtype=float)
+        l_dset[0:] = s_stars
+
+        c_dset = f.create_dataset('coords',
+                                  shape=s_coords.shape,
+                                  dtype=int)
+        c_dset[0:] = s_coords
 
     fig.savefig(out_folder.joinpath("hist.pdf"))
     plt.show()

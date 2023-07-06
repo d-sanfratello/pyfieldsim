@@ -1,5 +1,4 @@
 import argparse as ag
-import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -9,6 +8,7 @@ from pathlib import Path
 from pyfieldsim.core.fieldtypes.field import Field
 from pyfieldsim.core.stars import new_point_star
 from pyfieldsim.utils.metadata import read_metadata
+from pyfieldsim.utils.save_stars import save_stars
 
 from pyfieldsim.errors.exceptions import WrongDataFileError
 
@@ -89,52 +89,37 @@ def main():
             "File must be either sources ('S') or photon noise contaminated "
             "('P')."
         )
-    s_stars, s_coords = find_stars(sources_field, sources_metadata)
+    stars = find_stars(sources_field, sources_metadata)
 
     if not sources:
-        s_stars = s_stars * float(p_metadata['delta_time'])
+        for s in stars:
+            s.A = s.A * float(p_metadata['delta_time'])
 
     fig = plt.figure()
     ax = fig.gca()
 
     hist_s = ax.hist(
-        s_stars, histtype='step', color='black',
+        [s.A for s in stars],
+        histtype='step', color='black',
         label="Distribution of sources."
     )
 
     if not sources:
         ph_field = Field.from_field(data_file)
 
-        p_stars, p_coords = find_stars(ph_field, sources_metadata)
+        p_stars = find_stars(ph_field, sources_metadata)
 
         hist_p = ax.hist(
-            p_stars, histtype='step', color='red',
+            [p.A for p in p_stars],
+            histtype='step', color='red',
             label="Distribution of noise-contaminated sources."
         )
 
         plt.legend(loc='best')
 
-        with h5py.File(out_folder.joinpath('P_recovered_meta.h5'), 'w') as f:
-            l_dset = f.create_dataset('luminosity',
-                                      shape=p_stars.shape,
-                                      dtype=float)
-            l_dset[0:] = p_stars
+        save_stars(p_stars, data_file, options='countP')
 
-            c_dset = f.create_dataset('coords',
-                                      shape=p_coords.shape,
-                                      dtype=int)
-            c_dset[0:] = p_coords
-
-    with h5py.File(out_folder.joinpath('S_recovered_meta.h5'), 'w') as f:
-        l_dset = f.create_dataset('luminosity',
-                                  shape=s_stars.shape,
-                                  dtype=float)
-        l_dset[0:] = s_stars
-
-        c_dset = f.create_dataset('coords',
-                                  shape=s_coords.shape,
-                                  dtype=int)
-        c_dset[0:] = s_coords
+    save_stars(stars, data_file, options='countS')
 
     fig.savefig(out_folder.joinpath("hist.pdf"))
     plt.show()
@@ -148,25 +133,24 @@ def find_stars(ext_field, metadata):
         ext_field.field[pad[0]: -pad[0], pad[1]: -pad[1]]
     )
 
-    recorded_stars = []
-    recorded_coords = []
-
+    stars = []
     brightest = field.max()
     while brightest > 0:
         coords = np.unravel_index(np.argmax(field), shape)
 
-        recorded_stars.append(brightest)
-        recorded_coords.append(coords)
+        stars.append(
+            new_point_star(
+                A=brightest,
+                mu=[coords[1], coords[0]]
+            )
+        )
 
         # once the limit value has been found and stored, the
         # corresponding pixel on the CCD is set to 0.
         field[coords] = 0
         brightest = field.max()
 
-    recorded_stars = np.asarray(recorded_stars)
-    recorded_coords = np.asarray(recorded_coords)
-
-    return recorded_stars, recorded_coords
+    return stars
 
 
 if __name__ == "__main__":

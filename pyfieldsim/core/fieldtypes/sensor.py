@@ -29,6 +29,7 @@ def create_gain_map(sources_file, mean_gain, rel_var):
     )
 
     gain_map = np.where(gain_map < 0, 0, gain_map)
+    gain_map = np.where(gain_map > 1, 1, gain_map)
 
     return Field(
         gain_map,

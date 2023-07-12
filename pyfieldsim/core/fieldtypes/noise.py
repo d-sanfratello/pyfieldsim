@@ -53,7 +53,6 @@ def ph_noise(sources_file, delta_time):
         ph_field,
         seed=seed,
         sources_file=str(sources_file),
-        ph_noise_file=None,
         bkgnd_file=None,
         gain_map_file=None,
         dk_c_file=None
@@ -63,15 +62,14 @@ def ph_noise(sources_file, delta_time):
 def background(sources_file,
                snr,
                sigma=None, rel_var=None):
-    sources_file = Path(sources_file)
-    ph_noise_field_filename = 'P' + sources_file.name[1:]
-    ph_noise_field_file = Field.from_field(ph_noise_field_filename)
+    sources_filename = Path(sources_file)
+    field_file = Field.from_field(sources_filename)
 
     sim_meta = read_metadata(
         Path(sources_file.stem + '_meta.h5')
     )
 
-    bgst_star = np.max(ph_noise_field_file.field)
+    bgst_star = np.max(field_file.field)
 
     mean_bgnd = bgst_star / snr
     if rel_var is not None:
@@ -99,7 +97,6 @@ def background(sources_file,
         loc=mean_bgnd, scale=sigma,
         size=sim_meta['ext_shape'],
     )
-    bgnd = rng.poisson(bgnd)
     bgnd = np.where(
         bgnd < 0, 0, bgnd
     )
@@ -108,7 +105,6 @@ def background(sources_file,
         bgnd,
         seed=sim_meta['seed'],
         sources_file=str(sources_file),
-        ph_noise_file=ph_noise_field_filename,
         bkgnd_file=None,
         gain_map_file=None,
         dk_c_file=None

@@ -45,7 +45,7 @@ class Field:
     def __init__(self, field, *,
                  seed=None,
                  sources_file=None,
-                 ph_noise_file=None,
+                 integration_time=None,
                  bkgnd_file=None,
                  psf_file=None,
                  gain_map_file=None,
@@ -95,5 +95,7 @@ class Field:
                 meta[k] = int(v)
             elif v == 'None':
                 meta[k] = None
+            elif k == '_integration_time':
+                meta[k] = float(v)
 
         return meta

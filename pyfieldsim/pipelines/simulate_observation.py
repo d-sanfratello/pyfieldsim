@@ -16,8 +16,8 @@ def main():
         description='',
     )
     parser.add_argument('sources')
-    parser.add_argument('-p', action='store_true',
-                        dest='ph_contaminated', default=False,
+    parser.add_argument('-t', '--delta-time', type=float,
+                        dest='delta_time', default=1,
                         help="")
     parser.add_argument('-b', action='store_true',
                         dest='background', default=False,
@@ -45,14 +45,7 @@ def main():
     sources_file = Path(args.sources)
     metadata = read_metadata(sources_file)
 
-    if args.ph_contaminated:
-        ph_contaminated_filename = 'P' + sources_file.name[1:]
-        ph_noise_contaminated = Field.from_field(ph_contaminated_filename)
-
-        field = ph_noise_contaminated.field
-    else:
-        field = Field.from_sources(sources_file).field
-        ph_contaminated_filename = None
+    field = Field.from_sources(sources_file).field
 
     if args.background:
         background_filename = 'B' + sources_file.name[1:]
@@ -81,6 +74,9 @@ def main():
         gain_map_filename = None
 
     rng = np.random.default_rng(seed=metadata['seed'])
+
+    field = field * args.delta_time
+
     field = rng.poisson(field)
     field = np.where(
         field < 0, 0, field
@@ -104,7 +100,7 @@ def main():
         field,
         seed=metadata['seed'],
         sources_file=sources_file,
-        ph_noise_file=ph_contaminated_filename,
+        inetgration_time=args.delta_time,
         bkgnd_file=background_filename,
         gain_map_file=gain_map_filename,
         dk_c_file=dark_current_filename

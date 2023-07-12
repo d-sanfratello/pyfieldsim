@@ -8,7 +8,7 @@ from scipy.stats import norm
 from pathlib import Path
 
 from pyfieldsim.core.fieldtypes.field import Field
-from pyfieldsim.utils.metadata import read_metadata, save_metadata
+from pyfieldsim.utils.metadata import save_metadata
 
 
 def main():

@@ -1,5 +1,6 @@
 import argparse as ag
 import os
+import warnings
 
 from pathlib import Path
 
@@ -7,6 +8,7 @@ from pyfieldsim.core.fieldtypes.noise import ph_noise
 
 
 def main():
+    warnings.warn(DeprecationWarning)
     parser = ag.ArgumentParser(
         prog='fs-generate-ph-noise',
         description='',

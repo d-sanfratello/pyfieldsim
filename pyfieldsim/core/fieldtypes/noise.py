@@ -1,3 +1,5 @@
+import warnings
+
 import h5py.h5f
 import numpy as np
 
@@ -8,6 +10,7 @@ from pyfieldsim.utils.metadata import read_metadata, save_metadata
 
 
 def ph_noise(sources_file, delta_time):
+    warnings.warn(DeprecationWarning)
     sources_file = Path(sources_file)
 
     with h5py.File(sources_file, 'r') as f:

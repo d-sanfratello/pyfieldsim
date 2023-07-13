@@ -19,6 +19,9 @@ def main():
         description='',
     )
     parser.add_argument('data_file')
+    parser.add_argument("--no-log", action='store_true', default=False,
+                        dest='no_log',
+                        help="")
     parser.add_argument("-o", "--output",
                         dest='out_folder', default=None,
                         help="")
@@ -73,49 +76,31 @@ def main():
 
         sources_metadata = read_metadata(data_file)
         sources_field = Field.from_sources(data_file)
-    elif data_file.name.startswith('P'):
-        sources = False
-        sources_data_file = Path('S' + data_file.stem[1:]).with_suffix('.h5')
-
-        sources_metadata = read_metadata(sources_data_file)
-        sources_field = Field.from_sources(sources_data_file)
-
-        p_metadata = Path(data_file.stem + '_meta').with_suffix('.h5')
-        p_metadata = read_metadata(p_metadata)
     else:
         raise WrongDataFileError(
-            "File must be either sources ('S') or photon noise contaminated "
-            "('P')."
+            "File must be sources ('S')."
         )
     stars = find_stars(sources_field, sources_metadata)
-
-    if not sources:
-        for s in stars:
-            s.A = s.A * float(p_metadata['delta_time'])
 
     fig = plt.figure()
     ax = fig.gca()
 
-    hist_s = ax.hist(
+    counts, bins = ax.hist(
         [s.A for s in stars],
         histtype='step', color='black',
-        label="Distribution of sources."
-    )
+        label="Distribution of sources.",
+        bins=int(np.round(np.sqrt(len(stars))))
+    )[:-1]
 
-    if not sources:
-        ph_field = Field.from_field(data_file)
+    centers = 0.5 * (bins[:-1] + bins[1:])
+    errors = np.sqrt(counts)
 
-        p_stars = find_stars(ph_field, sources_metadata)
+    ax.errorbar(centers, counts, errors, linestyle='none', marker='.',
+                capsize=2)
 
-        hist_p = ax.hist(
-            [p.A for p in p_stars],
-            histtype='step', color='red',
-            label="Distribution of noise-contaminated sources."
-        )
-
-        plt.legend(loc='best')
-
-        save_stars(p_stars, data_file, options='countP')
+    if not args.no_log:
+        ax.set_xscale('log')
+        ax.set_yscale('log')
 
     save_stars(stars, data_file, options='countS')
 

@@ -47,7 +47,7 @@ def main():
             'N stars': n_stars
         }
         for _ in range(metadata['N stars']):
-            metadata[f's_{_}'] = f'({mu_x[_]}, {mu_y[_]}), A = {A[_]}'
+            metadata[f's_{_}'] = f'({mu_x[_]}, {mu_y[_]})\tA = {A[_]:1.3e}'
     else:
         print(f'Metadata for file {data_file.stem}')
         metadata = read_metadata(data_file)

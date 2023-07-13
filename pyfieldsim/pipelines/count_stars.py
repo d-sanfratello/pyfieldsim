@@ -72,8 +72,6 @@ def main():
     `field.Field`, `utils.DataType` and `utils.ImageStatus`.
     """
     if data_file.name.startswith('S'):
-        sources = True
-
         sources_metadata = read_metadata(data_file)
         sources_field = Field.from_sources(data_file)
     else:

@@ -100,7 +100,7 @@ def main():
         field,
         seed=metadata['seed'],
         sources_file=sources_file,
-        inetgration_time=args.delta_time,
+        integration_time=args.delta_time,
         bkgnd_file=background_filename,
         gain_map_file=gain_map_filename,
         dk_c_file=dark_current_filename

@@ -63,7 +63,7 @@ def background(sources_file,
                snr,
                sigma=None, rel_var=None):
     sources_filename = Path(sources_file)
-    field_file = Field.from_field(sources_filename)
+    field_file = Field.from_sources(sources_filename)
 
     sim_meta = read_metadata(
         Path(sources_file.stem + '_meta.h5')

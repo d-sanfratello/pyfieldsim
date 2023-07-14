@@ -91,19 +91,23 @@ def main():
     brt = data_field.field.max()
     brt_coords = np.unravel_index(np.argmax(data_field.field), shape)
 
+    # FIXME: Test with smaller field the min distance to get a star. Ask for
+    #  starting psf.
     valid_coords = np.array([
         [x, y] for x in range(shape[0]) for y in range(shape[1])
-        if dist([x, y], brt_coords) <= 15 and data_field.field[x, y] > 0
-    ])  # 15 may be arbitrary
+        if dist([x, y], brt_coords) <= 3.7 and data_field.field[x, y] > 0
+    ])  # 5 may be arbitrary
     valid_counts = np.array([
         data_field.field[x[0], x[1]] for x in valid_coords
     ])
 
     # 2 - Set bounds for mean at +- 1 px from the brightest point. Set
     # bounds for sigma. NB: should be prior, can't watch the data!
+    mins = np.min(valid_coords, axis=0)
+    maxs = np.max(valid_coords, axis=0)
     m_bounds = [
-        [brt_coords[0] - 1, brt_coords[0] + 1],
-        [brt_coords[1] - 1, brt_coords[1] + 1]
+        [mins[0], maxs[0]],
+        [mins[1], maxs[1]]
     ]
     s_bounds = [
         [0, 10]
@@ -114,7 +118,7 @@ def main():
     b_limit = bkgnd_analysis_metadata['mean'] \
         + args.b_limit * bkgnd_analysis_metadata['std']
     A_bounds = [
-        [0, 10 * brt]
+        [0, 100 * brt]
     ]
     b_bounds = [
         [0, bkgnd_analysis_metadata['mean'] \
@@ -211,14 +215,20 @@ def main():
 
     logZ_psf['2'] = logZ_2
 
-    columns_2 = [post_2[par] for par in post_2.dtype.names
-                 if par not in ['logL', 'logPrior']]
+    columns_2 = np.asarray([
+        post_2[par] for par in post_2.dtype.names
+        if par not in ['logL', 'logPrior']
+    ])
+    columns_2[1] = columns_2[0] * columns_2[1]
+    labels = [f'{par}' for par in post_2.dtype.names
+              if par not in ['logL', 'logPrior']]
+    labels[1] = 'A1'
+
     samples_2 = np.column_stack(columns_2)
 
     c = corner(
         samples_2,
-        labels=[f'{par}' for par in post_2.dtype.names
-                if par not in ['logL', 'logPrior']],
+        labels=labels,
         quantiles=[0.16, 0.5, 0.84],
         use_math_text=True,
         show_titles=True,
@@ -249,9 +259,14 @@ def main():
         print("-- 2 stars psf selected")
         sigma = np.median(post_2['sigma'])
         for _ in range(2):
+            if _ == 0:
+                A = np.median(post_2['A0'])
+            else:
+                A = np.median(post_2['A0'] * post_2['f'])
+
             stars.append(
                 new_star(
-                    A=np.median(post_2[f'A{_}']),
+                    A=A,
                     mu=[
                         np.median(post_2[f'mu_y{_}']),
                         np.median(post_2[f'mu_x{_}'])
@@ -259,9 +274,14 @@ def main():
                     sigma=sigma * np.eye(2)
                 )
             )
-            print(f"--- Star at ({np.median(post_1[f'mu_y{_}'])}, "
-                  f"{np.median(post_1[f'mu_x{_}'])}), "
-                  f"of brightness {np.median(post_1[f'A{_}'])}")
+        print(f"--- Star at ({np.median(post_2[f'mu_y0'])}, "
+              f"{np.median(post_2[f'mu_x0'])}), "
+              f"of brightness {np.median(post_2[f'A0'])}")
+
+        A1 = np.median(post_2['f'] * post_2['A0'])
+        print(f"--- Star at ({np.median(post_2[f'mu_y1'])}, "
+              f"{np.median(post_2[f'mu_x1'])}), "
+              f"of brightness {A1}")
 
     fig, ax = plt.subplots()
     ax.imshow(data_field.field, cmap='Greys', origin='upper')
@@ -276,6 +296,8 @@ def main():
         out_folder.joinpath(f'recovered_psf_star.pdf'),
         bbox_inches='tight'
     )
+    # TODO: remove forced exit.
+    import sys; sys.exit(0)
 
     # 5 - Remove all points within 3s from the mean (or each mean) from the
     # dataset.
@@ -525,17 +547,17 @@ class FindPsf2(Model):
         self.c = np.asarray(counts).astype(int)
 
         self.names = [
-            'A0', 'A1',
+            'A0', 'f',
             'mu_x0', 'mu_y0',
             'mu_x1', 'mu_y1',
             'sigma', 'b'
         ]
         self.bounds = [
-            bounds[0], bounds[0],
-            bounds[1], bounds[1],
-            bounds[1], bounds[1],
-            bounds[2],
+            bounds[0], [0, 1],
+            bounds[1], bounds[2],
+            bounds[1], bounds[2],
             bounds[3],
+            bounds[4],
         ]
 
         self.is_flat = is_flat
@@ -562,7 +584,7 @@ class FindPsf2(Model):
 
     def log_likelihood(self, param):
         A0 = param['A0']
-        A1 = param['A1']
+        A1 = param['f'] * A0
         mu_x0 = param['mu_x0']
         mu_y0 = param['mu_y0']
         mu_x1 = param['mu_x1']

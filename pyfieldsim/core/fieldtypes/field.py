@@ -61,6 +61,7 @@ class Field:
         if filename.suffix.lower() != '.h5':
             filename = filename.with_suffix('.h5')
 
+        # TODO: export metadata as in other files.
         with h5py.File(filename, "w") as file:
             field = file.create_dataset(
                 'field',

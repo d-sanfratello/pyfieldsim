@@ -139,6 +139,9 @@ class Sources:
 
         self.seed = seed
         self.__rng = np.random.default_rng(seed=self.seed)
+        if seed is None:
+            self.seed = self.__rng.integers(0, 1e15)
+            self.__rng = np.random.default_rng(seed=self.seed)
 
         self.__m_min = m_min
         self.__m_max = m_max

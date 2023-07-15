@@ -95,7 +95,7 @@ def main():
     #  starting psf.
     valid_coords = np.array([
         [x, y] for x in range(shape[0]) for y in range(shape[1])
-        if dist([x, y], brt_coords) <= 3.7 and data_field.field[x, y] > 0
+        if dist([x, y], brt_coords) <= 10 and data_field.field[x, y] > 0
     ])  # 5 may be arbitrary
     valid_counts = np.array([
         data_field.field[x[0], x[1]] for x in valid_coords
@@ -198,8 +198,8 @@ def main():
         work = cpnest.CPNest(
             fit_model_2,
             verbose=1,
-            nlive=100,  # 1000
-            maxmcmc=1000,  # 5000
+            nlive=500,  # 1000
+            maxmcmc=5000,  # 5000
             nensemble=1,
             output='./sampling_output_psf2/',
         )

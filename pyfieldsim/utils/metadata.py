@@ -4,12 +4,13 @@ from pathlib import Path
 
 
 def read_metadata(sources_file):
-    filename = Path(sources_file)
-
-    if not filename.stem.endswith('_meta'):
+    filename = Path(sources_file).with_suffix('')
+    if not filename.name.endswith('_meta'):
         filename = Path(
-            filename.stem + '_meta.h5'
+            filename.name + '_meta.h5'
         )
+    else:
+        filename = Path(filename.name + '.h5')
 
     with h5py.File(filename, 'r') as f:
         metadata = {
@@ -28,8 +29,8 @@ def read_metadata(sources_file):
 
 
 def save_metadata(metadata, filename):
-    filename = Path(filename)
-    filename = Path(filename.stem + '_meta').with_suffix('.h5')
+    filename = Path(filename).with_suffix('')
+    filename = Path(filename.name + '_meta.h5')
     if filename.suffix.lower() != '.h5':
         filename = filename.with_suffix('.h5')
 

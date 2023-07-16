@@ -263,7 +263,7 @@ class Sources:
 
     def export_sources(self, filename):
         filename = Path(filename)
-        if filename.suffix.lower() != '.h5':
+        if filename.suffixes[-1].lower() != '.h5':
             filename = filename.with_suffix('.h5')
 
         with h5py.File(filename, "w") as file:

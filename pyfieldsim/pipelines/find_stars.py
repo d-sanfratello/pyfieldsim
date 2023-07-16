@@ -25,9 +25,6 @@ def main():
         description='',
     )
     parser.add_argument('data_file')
-    parser.add_argument("-l", "--limit", type=float,
-                        dest='b_limit', default=None, required=True,
-                        help="")
     parser.add_argument("-f", "--flat", action='store_true',
                         dest='is_flat', default=False,
                         help="")
@@ -72,9 +69,10 @@ def main():
     coords = coords[obs_stars]
 
     if not args.is_flat:
-        bkgnd_analysis_metadata = read_metadata(
-            data_file.stem + '_bkg_analysis_meta.h5'
-        )
+        bkgnd_analysis_file = data_file.with_suffix('')
+        bkgnd_analysis_file = Path(bkgnd_analysis_file.name
+                                   + '_bkg_analysis.h5')
+        bkgnd_analysis_metadata = read_metadata(bkgnd_analysis_file)
         limit_points = 3
     else:
         bkgnd_analysis_metadata = {
@@ -113,18 +111,15 @@ def main():
         [0, 10]
     ]
 
-    # 3 - Set bounds for brightness. From b_limit to max_value. A is surely
+    # 3 - Set bounds for brightness. 0 to 100 * max_value. A is surely
     # inside.
-    b_limit = bkgnd_analysis_metadata['mean'] \
-        + args.b_limit * bkgnd_analysis_metadata['std']
     A_bounds = [
         [0, 100 * brt]
     ]
-    b_bounds = [
-        [0, bkgnd_analysis_metadata['mean'] \
-            + 3 * bkgnd_analysis_metadata['std']
-         ]
-    ]
+    b_bounds = [[
+        0,
+        bkgnd_analysis_metadata['mean'] + 3 * bkgnd_analysis_metadata['std']
+    ]]
 
     # 4 - Find one star within this radius.
     bounds = A_bounds + m_bounds + s_bounds + b_bounds
@@ -166,11 +161,27 @@ def main():
     columns_1 = [post_1[par] for par in post_1.dtype.names
                if par not in ['logL', 'logPrior']]
     samples_1 = np.column_stack(columns_1)
+    labels = [f'${par}$' for par in post_1.dtype.names
+              if par not in ['logL', 'logPrior']]
+    for _, l in enumerate(labels):
+        for s in ['mu', 'sigma']:
+            if l.find(s) > 0:
+                labels[_] = l.replace(s, '\\' + s)
+                l = labels[_]
+
+        if (sub_p := l.find('_')) > 0:
+            sub = l[sub_p + 1:-1]
+            labels[_] = l.replace(sub, '{' + sub + '}')
+            l = labels[_]
+
+        if l.find('x') > 0:
+            labels[_] = l.replace('x', 'y')
+        elif l.find('y') > 0:
+            labels[_] = l.replace('y', 'x')
 
     c = corner(
         samples_1,
-        labels=[f'{par}' for par in post_1.dtype.names
-                if par not in ['logL', 'logPrior']],
+        labels=labels,
         quantiles=[0.16, 0.5, 0.84],
         use_math_text=True,
         show_titles=True,
@@ -220,9 +231,23 @@ def main():
         if par not in ['logL', 'logPrior']
     ])
     columns_2[1] = columns_2[0] * columns_2[1]
-    labels = [f'{par}' for par in post_2.dtype.names
+    labels = [f'${par}$' for par in post_2.dtype.names
               if par not in ['logL', 'logPrior']]
-    labels[1] = 'A1'
+    labels[1] = '$A_1$'
+    for _, l in enumerate(labels):
+        for s in ['mu', 'sigma']:
+            if l.find(s) > 0:
+                labels[_] = l.replace(s, '\\' + s)
+                l = labels[_]
+
+        if (sub_p := l.find('_')) > 0:
+            sub = l[sub_p + 1:-1]
+            labels[_] = l.replace(sub, '{' + sub + '}')
+            l = labels[_]
+        if l.find('x') > 0:
+            labels[_] = l.replace('x', 'y')
+        elif l.find('y') > 0:
+            labels[_] = l.replace('y', 'x')
 
     samples_2 = np.column_stack(columns_2)
 

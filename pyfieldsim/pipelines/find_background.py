@@ -29,7 +29,8 @@ def main():
     out_folder = Path(os.getcwd())
     if args.out_folder is not None:
         out_folder = Path(args.out_folder)
-    out_stem = out_folder.joinpath(data_file.stem + '_bkg_analysis')
+    data_file = data_file.with_suffix('')
+    out_stem = out_folder.joinpath(data_file.name + '_bkg_analysis.h5')
 
     fig, axs = plt.subplots(nrows=2)
     ax_0, ax_1 = axs.flat

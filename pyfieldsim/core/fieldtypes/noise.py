@@ -11,15 +11,13 @@ from pyfieldsim.utils.metadata import read_metadata, save_metadata
 
 def ph_noise(sources_file, delta_time):
     warnings.warn(DeprecationWarning)
-    sources_file = Path(sources_file)
+    sources_file = Path(sources_file).with_suffix('.h5')
 
     with h5py.File(sources_file, 'r') as f:
         sources = np.asarray(f['luminosity'])
         sources_coords = np.asarray(f['coords'])
 
-    metadata = read_metadata(
-        Path(sources_file.stem + '_meta').with_suffix('.h5')
-    )
+    metadata = read_metadata(sources_file)
     seed = metadata['seed']
     ext_shape = metadata['ext_shape']
 
@@ -62,12 +60,10 @@ def ph_noise(sources_file, delta_time):
 def background(sources_file,
                snr,
                sigma=None, rel_var=None):
-    sources_filename = Path(sources_file)
-    field_file = Field.from_sources(sources_filename)
+    sources_file = Path(sources_file).with_suffix('.h5')
+    field_file = Field.from_sources(sources_file)
 
-    sim_meta = read_metadata(
-        Path(sources_file.stem + '_meta.h5')
-    )
+    sim_meta = read_metadata(sources_file)
 
     bgst_star = np.max(field_file.field)
 

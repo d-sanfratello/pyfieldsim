@@ -9,15 +9,13 @@ from pyfieldsim.utils.metadata import read_metadata
 class Field:
     @classmethod
     def from_sources(cls, sources_file, datatype='mass'):
-        sources_file = Path(sources_file)
+        sources_file = Path(sources_file).with_suffix('.h5')
 
         with h5py.File(sources_file, 'r') as f:
             coords = np.asarray(f['coords'])
             data = np.asarray(f[datatype])
 
-        metadata = read_metadata(
-            Path(sources_file.stem + '_meta').with_suffix('.h5')
-        )
+        metadata = read_metadata(sources_file)
 
         field = np.zeros(
             shape=metadata['ext_shape']
@@ -29,7 +27,7 @@ class Field:
 
     @classmethod
     def from_field(cls, field_file):
-        field_file = Path(field_file)
+        field_file = Path(field_file).with_suffix('.h5')
 
         with h5py.File(field_file, 'r') as f:
             field = np.asarray(f['field'])
@@ -58,7 +56,7 @@ class Field:
 
     def export_field(self, filename):
         filename = Path(filename)
-        if filename.suffix.lower() != '.h5':
+        if filename.suffixes[-1].lower() != '.h5':
             filename = filename.with_suffix('.h5')
 
         # TODO: export metadata as in other files.

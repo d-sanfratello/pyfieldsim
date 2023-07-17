@@ -25,6 +25,9 @@ def main():
         description='',
     )
     parser.add_argument('data_file')
+    parser.add_argument("-w", "--width", type=float,
+                        dest='initial_width', required=True,
+                        help="")
     parser.add_argument("-f", "--flat", action='store_true',
                         dest='is_flat', default=False,
                         help="")
@@ -89,12 +92,11 @@ def main():
     brt = data_field.field.max()
     brt_coords = np.unravel_index(np.argmax(data_field.field), shape)
 
-    # FIXME: Test with smaller field the min distance to get a star. Ask for
-    #  starting psf.
     valid_coords = np.array([
         [x, y] for x in range(shape[0]) for y in range(shape[1])
-        if dist([x, y], brt_coords) <= 10 and data_field.field[x, y] > 0
-    ])  # 5 may be arbitrary
+        if dist([x, y], brt_coords) <= args.initial_width and
+           data_field.field[x, y] > 0
+    ])  # see appendix D
     valid_counts = np.array([
         data_field.field[x[0], x[1]] for x in valid_coords
     ])
@@ -316,20 +318,22 @@ def main():
                        marker='o', edgecolor='green', facecolor='none')
     for s in stars:
         ax.scatter(s.mu[0], s.mu[1], marker='+', color='red')
+    ax.set_xlim(0, shape[1])
+    ax.set_ylim(0, shape[0])
 
     fig.savefig(
         out_folder.joinpath(f'recovered_psf_star.pdf'),
         bbox_inches='tight'
     )
-    # TODO: remove forced exit.
-    import sys; sys.exit(0)
 
     # 5 - Remove all points within 3s from the mean (or each mean) from the
     # dataset.
+    # TODO: set min(3s, R) with R from background (see calcs)
     valid_coords_mask = np.zeros(shape).astype(bool)
     remove_coords = np.array([
         [x, y] for x in range(shape[0]) for y in range(shape[1])
-        if dist([x, y], brt_coords) <= 3 * sigma and data_field.field[x, y] > 0
+        if dist([x, y], brt_coords) <= 1.5 * sigma
+        and data_field.field[x, y] > 0
     ])
     for c in remove_coords:
         valid_coords_mask[c[0], c[1]] = True
@@ -348,17 +352,22 @@ def main():
     while not reached_background:
         print(f"- Finding star #{star_id}")
         brt = field.max()
-        if brt == 0 and args.is_flat:
+        if args.is_flat and brt == 0:
             print("-- Reached background")
             reached_background = True
-            break
+            continue
+        elif isinstance(brt, np.ma.core.MaskedConstant):
+            print("-- Reached background")
+            reached_background = True
+            continue
 
         brt_coords = np.unravel_index(np.argmax(field), shape)
 
+        # TODO: Check if 1.5 creates aliases.
         valid_coords = np.array([
             [x, y] for x in range(shape[0]) for y in range(shape[1])
-            if dist([x, y], brt_coords) <= 5 * sigma and field[x, y] > 0
-        ])
+            if dist([x, y], brt_coords) <= 1.5 * sigma and field[x, y] > 0
+        ])  # check if 1.5 creates aliases
         valid_counts = np.array([
             field[x[0], x[1]] for x in valid_coords
         ])
@@ -372,7 +381,8 @@ def main():
                 mask=valid_coords_mask,
                 fill_value=np.nan
             )
-            break
+            print("-- Too few points to infer a star")
+            continue
 
         # 7 - Check against background only, 1, 2 or 3 stars in the save
         # dataset. Compare evidences.
@@ -381,10 +391,10 @@ def main():
             [brt_coords[1] - 1, brt_coords[1] + 1]
         ]
         A_bounds = [
-            [0, 10 * brt]
+            [0, 100 * brt]
         ]
         b_bounds = [
-            [0, bkgnd_analysis_metadata['mean'] \
+            [0, bkgnd_analysis_metadata['mean']
              + 3 * bkgnd_analysis_metadata['std']
              ]
         ]
@@ -393,7 +403,7 @@ def main():
 
         fit_model_s = FindStar(
             valid_coords, valid_counts,
-            (bkgnd_analysis_metadata['mean'], bkgnd_analysis_metadata['std']),
+            # (bkgnd_analysis_metadata['mean'], bkgnd_analysis_metadata['std']),
             bounds,
             sigma,
             is_flat=args.is_flat
@@ -425,7 +435,7 @@ def main():
             bounds = b_bounds
             fit_model_b = FindBackground(
                 valid_coords, valid_counts,
-                (bkgnd_analysis_metadata['mean'], bkgnd_analysis_metadata['std']),
+                # (bkgnd_analysis_metadata['mean'], bkgnd_analysis_metadata['std']),
                 bounds
             )
 
@@ -464,7 +474,7 @@ def main():
         else:
             print("-- Reached background")
             reached_background = True
-            break
+            continue
 
         # 8 - Remove all points within 3s from the mean (or each mean) from the
         # dataset.
@@ -490,6 +500,8 @@ def main():
                            marker='o', edgecolor='green', facecolor='none')
         for s in stars:
             ax.scatter(s.mu[0], s.mu[1], marker='+', color='red')
+        ax.set_xlim(0, shape[1])
+        ax.set_ylim(0, shape[0])
 
         fig.savefig(
             out_folder.joinpath(f'recovered_stars_star{star_id}.pdf'),
@@ -509,6 +521,8 @@ def main():
                        marker='o', edgecolor='green', facecolor='none')
     for s in stars:
         ax.scatter(s.mu[0], s.mu[1], marker='+', color='red')
+    ax.set_xlim(0, shape[1])
+    ax.set_ylim(0, shape[0])
 
     fig.savefig(
         out_folder.joinpath(f'recovered_stars_all.pdf'),
@@ -519,7 +533,9 @@ def main():
 
 
 class FindPsf(Model):
-    def __init__(self, coords, counts, background, bounds, is_flat=False):
+    def __init__(self, coords, counts,
+                 background,
+                 bounds, is_flat=False):
         self.coords = coords
         self.c = counts
 
@@ -542,9 +558,10 @@ class FindPsf(Model):
             log_p = 0.
 
             if not self.is_flat:
-                log_p += norm.logpdf(param['b'],
-                                     loc=self.bkgnd,
-                                     scale=self.bkgnd_std)
+                # log_p += norm.logpdf(param['b'],
+                #                      loc=self.bkgnd,
+                #                      scale=self.bkgnd_std)
+                log_p -= np.log(param['b'])
 
         return log_p
 
@@ -567,7 +584,9 @@ class FindPsf(Model):
 
 
 class FindPsf2(Model):
-    def __init__(self, coords, counts, background, bounds, is_flat=False):
+    def __init__(self, coords, counts,
+                 background,
+                 bounds, is_flat=False):
         self.coords = np.asarray(coords).astype(int)
         self.c = np.asarray(counts).astype(int)
 
@@ -589,9 +608,9 @@ class FindPsf2(Model):
         if is_flat:
             self.names = self.names[:-1]
             self.bounds = self.bounds[:-1]
-        else:
-            self.bkgnd = background[0]
-            self.bkgnd_std = background[1]
+        # else:
+        #     self.bkgnd = background[0]
+        #     self.bkgnd_std = background[1]
 
         self.n_pts = len(counts)
 
@@ -601,9 +620,11 @@ class FindPsf2(Model):
         if np.isfinite(log_p):
             log_p = 0.
             if not self.is_flat:
-                log_p += norm.logpdf(param['b'],
-                                     loc=self.bkgnd,
-                                     scale=self.bkgnd_std)
+                # log_p += norm.logpdf(param['b'],
+                #                      loc=self.bkgnd,
+                #                      scale=self.bkgnd_std)
+                if not self.is_flat:
+                    log_p -= np.log(param['b'])
 
         return log_p
 
@@ -632,7 +653,9 @@ class FindPsf2(Model):
 
 
 class FindStar(Model):
-    def __init__(self, coords, counts, background, bounds, sigma,
+    def __init__(self, coords, counts,
+                 # background,
+                 bounds, sigma,
                  is_flat=False):
         self.coords = coords
         self.c = counts
@@ -644,9 +667,9 @@ class FindStar(Model):
         if self.is_flat:
             self.names = self.names[:-1]
             self.bounds = self.bounds[:-1]
-        else:
-            self.bkgnd = background[0]
-            self.bkgnd_std = background[1]
+        # else:
+        #     self.bkgnd = background[0]
+        #     self.bkgnd_std = background[1]
 
         self.sigma = sigma
 
@@ -656,10 +679,12 @@ class FindStar(Model):
         log_p = super(FindStar, self).log_prior(param)
         if np.isfinite(log_p):
             log_p = 0.
+            # if not self.is_flat:
+            #     log_p += norm.logpdf(param['b'],
+            #                          loc=self.bkgnd,
+            #                          scale=self.bkgnd_std)
             if not self.is_flat:
-                log_p += norm.logpdf(param['b'],
-                                     loc=self.bkgnd,
-                                     scale=self.bkgnd_std)
+                log_p -= np.log(param['b'])
 
         return log_p
 
@@ -681,11 +706,13 @@ class FindStar(Model):
 
 
 class FindBackground(Model):
-    def __init__(self, coords, counts, background, bounds):
+    def __init__(self, coords, counts,
+                 # background,
+                 bounds):
         self.coords = coords
         self.c = counts
-        self.bkgnd = background[0]
-        self.bkgnd_std = background[1]
+        # self.bkgnd = background[0]
+        # self.bkgnd_std = background[1]
 
         self.names = ['b']
         self.bounds = bounds
@@ -695,9 +722,11 @@ class FindBackground(Model):
     def log_prior(self, param):
         log_p = super(FindBackground, self).log_prior(param)
         if np.isfinite(log_p):
-            log_p = norm.logpdf(param['b'],
-                                loc=self.bkgnd,
-                                scale=self.bkgnd_std)
+            log_p = 0
+            # log_p += norm.logpdf(param['b'],
+            #                      loc=self.bkgnd,
+            #                      scale=self.bkgnd_std)
+            log_p -= np.log(param['b'])
 
         return log_p
 

@@ -40,7 +40,7 @@ def main():
     else:
         sources = False
         metadata = read_metadata(
-            Path('S' + data_file.stem[1:] + '_meta').with_suffix('.h5')
+            Path('S' + data_file.name[1:])
         )
 
     if sources:

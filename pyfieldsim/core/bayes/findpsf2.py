@@ -31,7 +31,7 @@ class FindPsf2(Model):
             self.bounds = self.bounds[:-1]
             self.log_likelihood = self.__log_l_flat
         else:
-            self.bkgnd = background_meta['meta']
+            self.bkgnd = background_meta['mean']
             self.bkgnd_std = background_meta['std']
             self.log_likelihood = self.__log_l_bgnd
 

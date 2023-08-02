@@ -8,13 +8,14 @@ import numpy as np
 import os
 
 from corner import corner
-from cpnest.model import Model
 from pathlib import Path
-from scipy.stats import multivariate_normal as mvn
-from scipy.stats import poisson, norm
 
 from pyfieldsim.core.fieldtypes.field import Field
 from pyfieldsim.core.stars import new_star
+
+from pyfieldsim.core.bayes import FindPsf, FindPsf2
+from pyfieldsim.core.bayes import FindStar, FindBackground
+
 from pyfieldsim.utils.metadata import read_metadata
 from pyfieldsim.utils.save_stars import save_stars
 
@@ -65,7 +66,7 @@ def main():
 
     obs_stars = []
     for idx, s in enumerate(coords):
-        if s[0] >= 0 and s[0] < shape[0] and s[1] >= 0 and s[1] < shape[1]:
+        if 0 <= s[0] < shape[0] and 0 <= s[1] < shape[1]:
             obs_stars.append(idx)
 
     obs_stars = np.asarray(obs_stars)
@@ -92,10 +93,12 @@ def main():
     brt = data_field.field.max()
     brt_coords = np.unravel_index(np.argmax(data_field.field), shape)
 
+    initial_radius = min(3 * args.initial_width, 10)
+
     valid_coords = np.array([
         [x, y] for x in range(shape[0]) for y in range(shape[1])
-        if dist([x, y], brt_coords) <= args.initial_width and
-           data_field.field[x, y] > 0
+        if dist([x, y], brt_coords) <= initial_radius
+        and data_field.field[x, y] > 0
     ])  # see appendix D
     valid_counts = np.array([
         data_field.field[x[0], x[1]] for x in valid_coords
@@ -116,22 +119,22 @@ def main():
     # 3 - Set bounds for brightness. 0 to 100 * max_value. A is surely
     # inside.
     A_bounds = [
-        [0, 100 * brt]
+        [brt / 10, 100 * brt]
     ]
     b_bounds = [[
-        0,
-        bkgnd_analysis_metadata['mean'] + 3 * bkgnd_analysis_metadata['std']
+        max(
+            bkgnd_analysis_metadata['mean']
+                - 2 * bkgnd_analysis_metadata['std'], 1),
+        bkgnd_analysis_metadata['mean'] + bkgnd_analysis_metadata['std']
     ]]
 
     # 4 - Find one star within this radius.
     bounds = A_bounds + m_bounds + s_bounds + b_bounds
 
-    fit_model_1 = FindPsf(
-        valid_coords, valid_counts,
-        (bkgnd_analysis_metadata['mean'], bkgnd_analysis_metadata['std']),
-        bounds,
-        is_flat=args.is_flat
-    )
+    fit_model_1 = FindPsf(valid_coords, valid_counts,
+                          bkgnd_analysis_metadata['mean'],
+                          bounds,
+                          is_flat=args.is_flat)
 
     psf1_path = Path('./sampling_output_psf1/')
     print("- Testing 1 star psf")
@@ -139,8 +142,8 @@ def main():
         print("-- Inference run")
         work = cpnest.CPNest(
             fit_model_1,
-            verbose=1,
-            nlive=500,  # 1000
+            verbose=2,
+            nlive=1000,  # 1000
             maxmcmc=5000,  # 5000
             nensemble=4,
             output=psf1_path,
@@ -160,11 +163,15 @@ def main():
         '1': logZ_1
     }
 
-    columns_1 = [post_1[par] for par in post_1.dtype.names
-               if par not in ['logL', 'logPrior']]
+    columns_1 = [
+        post_1[par] for par in post_1.dtype.names
+        if par not in ['logL', 'logPrior']
+    ]
     samples_1 = np.column_stack(columns_1)
-    labels = [f'${par}$' for par in post_1.dtype.names
-              if par not in ['logL', 'logPrior']]
+    labels = [
+        f'${par}$' for par in post_1.dtype.names
+        if par not in ['logL', 'logPrior']
+    ]
     for _, l in enumerate(labels):
         for s in ['mu', 'sigma']:
             if l.find(s) > 0:
@@ -187,7 +194,9 @@ def main():
         quantiles=[0.16, 0.5, 0.84],
         use_math_text=True,
         show_titles=True,
+        title_fmt='.3e'
     )
+    c = update_title_fmts(c, post_1)
     c.savefig(
         out_folder.joinpath(f'joint_posterior_psf1.pdf'),
         bbox_inches='tight'
@@ -197,21 +206,20 @@ def main():
     # evidences.
     bounds = A_bounds + m_bounds + s_bounds + b_bounds
 
-    fit_model_2 = FindPsf2(
-        valid_coords, valid_counts,
-        (bkgnd_analysis_metadata['mean'], bkgnd_analysis_metadata['std']),
-        bounds,
-        is_flat=args.is_flat
-    )
+    fit_model_2 = FindPsf2(valid_coords, valid_counts,
+                           bkgnd_analysis_metadata, bounds,
+                           is_flat=args.is_flat)
 
     psf2_path = Path('./sampling_output_psf2/')
     print("- Testing 2 stars psf")
-    if not psf2_path.exists():
+    if initial_radius < 2:
+        logZ_2 = -np.inf
+    elif not psf2_path.exists():
         print("-- Inference run")
         work = cpnest.CPNest(
             fit_model_2,
-            verbose=1,
-            nlive=500,  # 1000
+            verbose=2,
+            nlive=1000,  # 1000
             maxmcmc=5000,  # 5000
             nensemble=1,
             output='./sampling_output_psf2/',
@@ -228,45 +236,70 @@ def main():
 
     logZ_psf['2'] = logZ_2
 
-    columns_2 = np.asarray([
-        post_2[par] for par in post_2.dtype.names
-        if par not in ['logL', 'logPrior']
-    ])
-    columns_2[1] = columns_2[0] * columns_2[1]
-    labels = [f'${par}$' for par in post_2.dtype.names
-              if par not in ['logL', 'logPrior']]
-    labels[1] = '$A_1$'
-    for _, l in enumerate(labels):
-        for s in ['mu', 'sigma']:
-            if l.find(s) > 0:
-                labels[_] = l.replace(s, '\\' + s)
+    try:
+        s0_s1_dist = dist(
+            (coords[0][1], coords[0][0]),
+            (coords[1][1], coords[1][0])
+        )
+    except IndexError:
+        pass
+    else:
+        if s0_s1_dist > initial_radius:
+            logZ_psf['2'] = -np.inf
+
+    if np.isfinite(logZ_psf['2']):
+        columns_2 = np.asarray([
+            post_2[par] for par in post_2.dtype.names
+            if par not in ['logL', 'logPrior']
+        ])
+        columns_2[1] = columns_2[0] * columns_2[1]
+        labels = [f'${par}$' for par in post_2.dtype.names
+                  if par not in ['logL', 'logPrior']]
+        labels[1] = '$A_1$'
+        for _, l in enumerate(labels):
+            for s in ['mu', 'sigma']:
+                if l.find(s) > 0:
+                    labels[_] = l.replace(s, '\\' + s)
+                    l = labels[_]
+
+            if (sub_p := l.find('_')) > 0:
+                sub = l[sub_p + 1:-1]
+                labels[_] = l.replace(sub, '{' + sub + '}')
                 l = labels[_]
+            if l.find('x') > 0:
+                labels[_] = l.replace('x', 'y')
+            elif l.find('y') > 0:
+                labels[_] = l.replace('y', 'x')
 
-        if (sub_p := l.find('_')) > 0:
-            sub = l[sub_p + 1:-1]
-            labels[_] = l.replace(sub, '{' + sub + '}')
-            l = labels[_]
-        if l.find('x') > 0:
-            labels[_] = l.replace('x', 'y')
-        elif l.find('y') > 0:
-            labels[_] = l.replace('y', 'x')
+        samples_2 = np.column_stack(columns_2)
 
-    samples_2 = np.column_stack(columns_2)
-
-    c = corner(
-        samples_2,
-        labels=labels,
-        quantiles=[0.16, 0.5, 0.84],
-        use_math_text=True,
-        show_titles=True,
-    )
-    c.savefig(
-        out_folder.joinpath(f'joint_posterior_psf2.pdf'),
-        bbox_inches='tight'
-    )
+        c = corner(
+            samples_2,
+            labels=labels,
+            quantiles=[0.16, 0.5, 0.84],
+            use_math_text=True,
+            show_titles=True,
+            title_fmt='.3e'
+        )
+        c = update_title_fmts(c, post_2)
+        c.savefig(
+            out_folder.joinpath(f'joint_posterior_psf2.pdf'),
+            bbox_inches='tight'
+        )
 
     stars = []
-    if logZ_psf['1'] >= logZ_psf['2']:
+    pos_errors = []
+    logBayesFactor = logZ_psf['1'] - logZ_psf['2']
+    # 10^0.5 -> substantial evidence
+    # 10^1 -> strong evidence
+    # 10^1.5 -> very strong evidence
+    # 10^2 -> decisive evidence
+
+    print(f"--- logZ_1star = {logZ_psf['1']:.1f}")
+    print(f"--- logZ_2star = {logZ_psf['2']:.1f}")
+    print(f"--- logB = {logBayesFactor:.2f}")
+
+    if logBayesFactor >= -1 * np.log(10):
         print("-- 1 star psf selected")
         sigma = np.median(post_1['sigma'])
         stars.append(
@@ -279,9 +312,17 @@ def main():
                 sigma=sigma * np.eye(2)
             )
         )
-        print(f"--- Star at ({np.median(post_1['mu_y'])}, "
-              f"{np.median(post_1['mu_x'])}), "
-              f"of brightness {np.median(post_1['A'])}")
+        A_m, A_l, A_u, A_fmt = median_quantiles(post_1['A'])
+        mu_y_m, mu_y_l, mu_y_u, y_fmt = median_quantiles(post_1['mu_y'])
+        mu_x_m, mu_x_l, mu_x_u, x_fmt = median_quantiles(post_1['mu_x'])
+        print(f"--- Star at [{y_fmt(mu_y_m)} (-{mu_y_l:.1e}, +{mu_y_u:.1e}),"
+              f" {x_fmt(mu_x_m)} (-{mu_x_l:.1e}, +{mu_x_u:.1e})]")
+        print(f"    of brightness {A_fmt(A_m)} (-{A_l:.1e} +{A_u:.1e})")
+
+        pos_errors.append([
+            [mu_y_l, mu_y_u], [mu_x_l, mu_x_u]
+        ])
+
     else:
         print("-- 2 stars psf selected")
         sigma = np.median(post_2['sigma'])
@@ -301,23 +342,68 @@ def main():
                     sigma=sigma * np.eye(2)
                 )
             )
-        print(f"--- Star at ({np.median(post_2[f'mu_y0'])}, "
-              f"{np.median(post_2[f'mu_x0'])}), "
-              f"of brightness {np.median(post_2[f'A0'])}")
+        A0_m, A0_l, A0_u, A0_fmt = median_quantiles(post_2['A0'])
+        mu_y0_m, mu_y0_l, mu_y0_u, y0_fmt = median_quantiles(post_2['mu_y0'])
+        mu_x0_m, mu_x0_l, mu_x0_u, x0_fmt = median_quantiles(post_2['mu_x0'])
+        print(
+            f"--- Star at [{y0_fmt(mu_y0_m)} (-{mu_y0_l:.1e} +{mu_y0_u:.1e}),"
+            f" {x0_fmt(mu_x0_m)} (-{mu_x0_l:.1e} +{mu_x0_u:.1e})]")
+        print(f"    of brightness {A0_fmt(A0_m)} (-{A0_l:.1e} +{A0_u:.1e})")
 
-        A1 = np.median(post_2['f'] * post_2['A0'])
-        print(f"--- Star at ({np.median(post_2[f'mu_y1'])}, "
-              f"{np.median(post_2[f'mu_x1'])}), "
-              f"of brightness {A1}")
+        A1_m, A1_l, A1_u, A1_fmt = median_quantiles(post_2['f'] * post_2['A0'])
+        mu_y1_m, mu_y1_l, mu_y1_u, y1_fmt = median_quantiles(post_2['mu_y1'])
+        mu_x1_m, mu_x1_l, mu_x1_u, x1_fmt = median_quantiles(post_2['mu_x1'])
+        print(
+            f"--- Star at [{y1_fmt(mu_y1_m)} (-{mu_y1_l:.1e} +{mu_y1_u:.1e}),"
+            f" {x1_fmt(mu_x1_m)} (-{mu_x1_l:.1e} +{mu_x1_u:.1e})]")
+        print(f"    of brightness {A1_fmt(A1_m)} (-{A1_l:.1e} +{A1_u:.1e})")
+
+        pos_errors.append([
+            [mu_y0_l, mu_y0_u], [mu_x0_l, mu_x0_u]
+        ])
+        pos_errors.append([
+            [mu_y1_l, mu_y1_u], [mu_x1_l, mu_x1_u]
+        ])
+
+    pos_errors = np.array(pos_errors)
 
     fig, ax = plt.subplots()
     ax.imshow(data_field.field, cmap='Greys', origin='upper')
+
     if args.show_sources:
-        for s in coords:
-            ax.scatter(s[1], s[0],
-                       marker='o', edgecolor='green', facecolor='none')
-    for s in stars:
-        ax.scatter(s.mu[0], s.mu[1], marker='+', color='red')
+        for _, s in enumerate(coords):
+            good_px = plt.Rectangle(
+                (s[1] - 0.5, s[0] - 0.5),
+                width=1, height=1,
+                edgecolor='green',
+                facecolor='none'
+            )
+            ax.add_artist(good_px)
+
+            if _ == 0:
+                circle = plt.Circle(
+                    tuple(brt_coords),
+                    radius=initial_radius,
+                    fill=False,
+                    color='blue',
+                    linewidth=0.5,
+                    alpha=0.5,
+                    linestyle='dashed'
+                )
+                ax.set_aspect(1)
+                ax.add_artist(circle)
+
+    for s, err in zip(stars, pos_errors):
+        x_errs = err[0].reshape((2, 1))
+        y_errs = err[1].reshape((2, 1))
+
+        ax.errorbar(s.mu[0], s.mu[1],
+                    xerr=x_errs,
+                    yerr=y_errs,
+                    fmt='.',
+                    markersize=0.5,
+                    color='red', elinewidth=0.7)
+
     ax.set_xlim(0, shape[1])
     ax.set_ylim(0, shape[0])
 
@@ -326,9 +412,14 @@ def main():
         bbox_inches='tight'
     )
 
-    # 5 - Remove all points within 3s from the mean (or each mean) from the
+    # TODO: remove before flight
+    sys.exit(0)
+
+    # 5 - Remove all points within n * s from the mean (or each mean) from the
     # dataset.
-    # TODO: set min(3s, R) with R from background (see calcs)
+    # TODO: set min(n * s, R) with R from background (see calcs). n should
+    #  be the psf sigma limit after which algorithm cannot recognise two
+    #  identical (or almost identical) stars.
     valid_coords_mask = np.zeros(shape).astype(bool)
     remove_coords = np.array([
         [x, y] for x in range(shape[0]) for y in range(shape[1])
@@ -394,9 +485,9 @@ def main():
             [0, 100 * brt]
         ]
         b_bounds = [
-            [0, bkgnd_analysis_metadata['mean']
-             + 3 * bkgnd_analysis_metadata['std']
-             ]
+            [0,
+             bkgnd_analysis_metadata['mean']
+                + 3 * bkgnd_analysis_metadata['std']]
         ]
 
         bounds = A_bounds + m_bounds + b_bounds
@@ -413,8 +504,8 @@ def main():
         print("-- Testing against star hypothesis")
         work = cpnest.CPNest(
             fit_model_s,
-            verbose=0,
-            nlive=100,  # 1000
+            verbose=1,
+            nlive=1000,  # 1000
             maxmcmc=5000,  # 5000
             nensemble=4,
             output=star_path,
@@ -512,6 +603,12 @@ def main():
 
         # 9 - Iterate from 6# until background term dominates in a dataset.
 
+    # TODO: Correlate points within deletion limit and some more (twice?)
+    #  from each star to check for aliases. Maybe use `correlate` from
+    #  `scipy.signal` as correlate([[star_c_x, star_c_y]], [s1, s2, s3],
+    #  ...), with s_i = [s_i_x, s_i_y], s_i being the stars inside that
+    #  region.
+
     # 10 - Profit.
     fig, ax = plt.subplots()
     ax.imshow(data_field.field, cmap='Greys', origin='upper')
@@ -532,219 +629,64 @@ def main():
     save_stars(stars, data_file, options=args.options)
 
 
-class FindPsf(Model):
-    def __init__(self, coords, counts,
-                 background,
-                 bounds, is_flat=False):
-        self.coords = coords
-        self.c = counts
-
-        self.names = ['A', 'mu_x', 'mu_y', 'sigma', 'b']
-        self.bounds = bounds
-
-        self.is_flat = is_flat
-        if self.is_flat:
-            self.names = self.names[:-1]
-            self.bounds = self.bounds[:-1]
-        else:
-            self.bkgnd = background[0]
-            self.bkgnd_std = background[1]
-
-        self.n_pts = len(counts)
-
-    def log_prior(self, param):
-        log_p = super(FindPsf, self).log_prior(param)
-        if np.isfinite(log_p):
-            log_p = 0.
-
-            if not self.is_flat:
-                # log_p += norm.logpdf(param['b'],
-                #                      loc=self.bkgnd,
-                #                      scale=self.bkgnd_std)
-                log_p -= np.log(param['b'])
-
-        return log_p
-
-    def log_likelihood(self, param):
-        A = param['A']
-        mu_x = param['mu_x']
-        mu_y = param['mu_y']
-        sigma = param['sigma']
-        if not self.is_flat:
-            b = param['b']
-        else:
-            b = 0
-
-        star = mvn(mean=[mu_x, mu_y], cov=(sigma**2)*np.eye(2))
-        c_hat = A * star.pdf(self.coords) + b
-
-        likel = poisson.logpmf(self.c, c_hat)
-
-        return likel.sum()
-
-
-class FindPsf2(Model):
-    def __init__(self, coords, counts,
-                 background,
-                 bounds, is_flat=False):
-        self.coords = np.asarray(coords).astype(int)
-        self.c = np.asarray(counts).astype(int)
-
-        self.names = [
-            'A0', 'f',
-            'mu_x0', 'mu_y0',
-            'mu_x1', 'mu_y1',
-            'sigma', 'b'
-        ]
-        self.bounds = [
-            bounds[0], [0, 1],
-            bounds[1], bounds[2],
-            bounds[1], bounds[2],
-            bounds[3],
-            bounds[4],
-        ]
-
-        self.is_flat = is_flat
-        if is_flat:
-            self.names = self.names[:-1]
-            self.bounds = self.bounds[:-1]
-        # else:
-        #     self.bkgnd = background[0]
-        #     self.bkgnd_std = background[1]
-
-        self.n_pts = len(counts)
-
-    def log_prior(self, param):
-        log_p = super(FindPsf2, self).log_prior(param)
-
-        if np.isfinite(log_p):
-            log_p = 0.
-            if not self.is_flat:
-                # log_p += norm.logpdf(param['b'],
-                #                      loc=self.bkgnd,
-                #                      scale=self.bkgnd_std)
-                if not self.is_flat:
-                    log_p -= np.log(param['b'])
-
-        return log_p
-
-    def log_likelihood(self, param):
-        A0 = param['A0']
-        A1 = param['f'] * A0
-        mu_x0 = param['mu_x0']
-        mu_y0 = param['mu_y0']
-        mu_x1 = param['mu_x1']
-        mu_y1 = param['mu_y1']
-        sigma = param['sigma']
-        if self.is_flat:
-            b = 0
-        else:
-            b = param['b']
-
-        star0 = mvn(mean=[mu_x0, mu_y0], cov=(sigma**2) * np.eye(2))
-        star1 = mvn(mean=[mu_x1, mu_y1], cov=(sigma**2) * np.eye(2))
-        c_hat = A0 * star0.pdf(self.coords) \
-            + A1 * star1.pdf(self.coords) \
-            + b
-
-        likel = poisson.logpmf(self.c, c_hat)
-
-        return likel.sum()
-
-
-class FindStar(Model):
-    def __init__(self, coords, counts,
-                 # background,
-                 bounds, sigma,
-                 is_flat=False):
-        self.coords = coords
-        self.c = counts
-
-        self.names = ['A', 'mu_x', 'mu_y', 'b']
-        self.bounds = bounds
-
-        self.is_flat = is_flat
-        if self.is_flat:
-            self.names = self.names[:-1]
-            self.bounds = self.bounds[:-1]
-        # else:
-        #     self.bkgnd = background[0]
-        #     self.bkgnd_std = background[1]
-
-        self.sigma = sigma
-
-        self.n_pts = len(counts)
-
-    def log_prior(self, param):
-        log_p = super(FindStar, self).log_prior(param)
-        if np.isfinite(log_p):
-            log_p = 0.
-            # if not self.is_flat:
-            #     log_p += norm.logpdf(param['b'],
-            #                          loc=self.bkgnd,
-            #                          scale=self.bkgnd_std)
-            if not self.is_flat:
-                log_p -= np.log(param['b'])
-
-        return log_p
-
-    def log_likelihood(self, param):
-        A = param['A']
-        mu_x = param['mu_x']
-        mu_y = param['mu_y']
-        if self.is_flat:
-            b = 0
-        else:
-            b = param['b']
-
-        star = mvn(mean=[mu_x, mu_y], cov=(self.sigma**2) * np.eye(2))
-        c_hat = A * star.pdf(self.coords) + b
-
-        likel = poisson.logpmf(self.c, c_hat)
-
-        return likel.sum()
-
-
-class FindBackground(Model):
-    def __init__(self, coords, counts,
-                 # background,
-                 bounds):
-        self.coords = coords
-        self.c = counts
-        # self.bkgnd = background[0]
-        # self.bkgnd_std = background[1]
-
-        self.names = ['b']
-        self.bounds = bounds
-
-        self.n_pts = len(counts)
-
-    def log_prior(self, param):
-        log_p = super(FindBackground, self).log_prior(param)
-        if np.isfinite(log_p):
-            log_p = 0
-            # log_p += norm.logpdf(param['b'],
-            #                      loc=self.bkgnd,
-            #                      scale=self.bkgnd_std)
-            log_p -= np.log(param['b'])
-
-        return log_p
-
-    def log_likelihood(self, param):
-        b = param['b']
-
-        c_hat = b * np.ones(shape=self.c.shape)
-        likel = poisson.logpmf(self.c, c_hat)
-
-        return likel.sum()
-
-
 def dist(x1, x2):
     x1 = np.asarray(x1)
     x2 = np.asarray(x2)
 
     d = np.sqrt(((x2 - x1) ** 2).sum())
     return d
+
+
+def median_quantiles(qty, cl=1):
+    if cl == 1:
+        qtls = [0.16, 0.84]
+    elif cl == 2:
+        qtls = [0.05, 0.95]
+    elif cl == 3:
+        qtls = [0.01, 0.99]
+    else:
+        raise ValueError("Unexpected value.")
+
+    q_50, q_l, q_u = np.quantile(qty, [0.5] + qtls)
+    err_m = q_50 - q_l
+    err_p = q_u - q_50
+
+    min_error = min(err_m, err_p)
+    odg_err = np.floor(np.log10(min_error)).astype(int)
+    odg_meas = np.floor(np.log10(q_50)).astype(int)
+
+    odg = f".{odg_meas - odg_err + 1}e"
+    fmt = f"{{0:{odg}}}".format
+
+    return q_50, err_m, err_p, fmt
+
+
+def update_title_fmts(c, post):
+    dim_space = np.sqrt(len(c.axes)).astype(int)
+    names = post.dtype.names
+
+    n_ = 0
+    for _, ax in enumerate(c.axes):
+        if (_ == 0) or (_ % (dim_space+1) == 0):
+            name = names[n_]
+            val_50, val_m, val_p, fmt = median_quantiles(post[name])
+
+            old_title = ax.title._text
+
+            n_idx = old_title.find("$")
+            n_idx_end = old_title.find("$", n_idx + 1, -1)
+
+            name_title = rf"${old_title[n_idx + 1:n_idx_end]}$ = "
+            val_title = r"${{{0}}}".format(fmt(val_50))
+            err_m_title = r"_{{{0}}}".format(f"{val_m:.1e}")
+            err_p_title = r"^{{{0}}}$".format(f"{val_p:.1e}")
+
+            title = name_title + val_title + err_m_title + err_p_title
+
+            ax.set_title(title)
+            n_ += 1
+
+    return c
 
 
 if __name__ == "__main__":

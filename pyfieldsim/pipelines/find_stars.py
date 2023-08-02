@@ -434,7 +434,6 @@ def main():
         fill_value=np.nan
     )
 
-
     # 6 - Find next brightest star and select all points in a circle around
     # 5σ from the bright point.
     reached_background = False
@@ -494,7 +493,7 @@ def main():
 
         fit_model_s = FindStar(
             valid_coords, valid_counts,
-            # (bkgnd_analysis_metadata['mean'], bkgnd_analysis_metadata['std']),
+            bkgnd_analysis_metadata,
             bounds,
             sigma,
             is_flat=args.is_flat
@@ -526,7 +525,7 @@ def main():
             bounds = b_bounds
             fit_model_b = FindBackground(
                 valid_coords, valid_counts,
-                # (bkgnd_analysis_metadata['mean'], bkgnd_analysis_metadata['std']),
+                bkgnd_analysis_metadata,
                 bounds
             )
 

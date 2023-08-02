@@ -7,7 +7,7 @@ from pathlib import Path
 
 from pyfieldsim.core.fieldtypes.field import Field
 from pyfieldsim.core.psf import GaussKernel
-from pyfieldsim.utils.metadata import read_metadata
+from pyfieldsim.utils.metadata import read_metadata, save_metadata
 
 
 def main():
@@ -110,6 +110,19 @@ def main():
     observation_filename = out_folder.joinpath(observation_filename)
 
     field.export_field(filename=observation_filename)
+
+    metadata = {
+        'delta_time': args.delta_time,
+        'psf_width': args.psf_width,
+        'has_background': args.background,
+        'has_gain_map': args.gain_map,
+        'has_dark_current': args.dark_current,
+    }
+
+    save_metadata(
+        metadata=metadata,
+        filename=observation_filename
+    )
 
 
 if __name__ == "__main__":

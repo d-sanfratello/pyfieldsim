@@ -132,7 +132,7 @@ def main():
     bounds = A_bounds + m_bounds + s_bounds + b_bounds
 
     fit_model_1 = FindPsf(valid_coords, valid_counts,
-                          bkgnd_analysis_metadata['mean'],
+                          bkgnd_analysis_metadata,
                           bounds,
                           is_flat=args.is_flat)
 
@@ -357,6 +357,11 @@ def main():
             f"--- Star at [{y1_fmt(mu_y1_m)} (-{mu_y1_l:.1e} +{mu_y1_u:.1e}),"
             f" {x1_fmt(mu_x1_m)} (-{mu_x1_l:.1e} +{mu_x1_u:.1e})]")
         print(f"    of brightness {A1_fmt(A1_m)} (-{A1_l:.1e} +{A1_u:.1e})")
+
+        f_m, f_l, f_u, f_fmt = median_quantiles(post_2['f'])
+        print(
+            f"--- fraction is {f_fmt(f_m)} (-{f_l:.1e} +{f_u:.1e})"
+        )
 
         pos_errors.append([
             [mu_y0_l, mu_y0_u], [mu_x0_l, mu_x0_u]

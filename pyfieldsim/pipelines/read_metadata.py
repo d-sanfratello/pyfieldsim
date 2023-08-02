@@ -15,22 +15,22 @@ def main():
 
     args = parser.parse_args()
 
-    data_file = Path(args.file)
+    data_file = Path(args.file).with_suffix('')
 
     print(f'=====')
     if data_file.stem.startswith('O'):
-        print(f'Background analysis for file {data_file.stem}')
+        print(f'Background analysis for file {data_file.name}')
         bkg_analysis = Path(
-            data_file.stem + '_bkg_analysis'
-        ).with_suffix('.h5')
+            data_file.name + '_bkg_analysis.h5'
+        )
 
         metadata = read_metadata(bkg_analysis)
     elif data_file.stem.startswith('R'):
-        print(f'Recovered stars from file {data_file.stem}')
+        print(f'Recovered stars from file {data_file.name}')
 
         if not data_file.stem.endswith('_meta'):
             data_file = Path(
-                data_file.stem + '_meta.h5'
+                data_file.name + '_meta.h5'
             )
 
         with h5py.File(data_file, 'r') as f:
@@ -49,7 +49,7 @@ def main():
         for _ in range(metadata['N stars']):
             metadata[f's_{_}'] = f'({mu_x[_]}, {mu_y[_]})\tA = {A[_]:1.3e}'
     else:
-        print(f'Metadata for file {data_file.stem}')
+        print(f'Metadata for file {data_file.name}')
         metadata = read_metadata(data_file)
 
     print(f'-----')

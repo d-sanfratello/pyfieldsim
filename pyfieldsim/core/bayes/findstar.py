@@ -1,13 +1,12 @@
 import numpy as np
 
 from cpnest.model import Model
-from scipy.stats import multivariate_normal as mvn
 from scipy.stats import poisson, norm
 
 
 class FindStar(Model):
     def __init__(self, coords, counts,
-                 # background,
+                 background_meta,
                  bounds, sigma,
                  is_flat=False):
         self.coords = coords
@@ -22,8 +21,8 @@ class FindStar(Model):
             self.bounds = self.bounds[:-1]
             self.log_likelihood = self.__log_l_flat
         else:
-            self.bkgnd = background[0]
-            self.bkgnd_std = background[1]
+            self.bkgnd = background_meta['mean']
+            self.bkgnd_std = background_meta['std']
             self.log_likelihood = self.__log_l_bgnd
 
         self.sigma = sigma
@@ -38,7 +37,6 @@ class FindStar(Model):
                 log_p += norm.logpdf(param['b'],
                                      loc=self.bkgnd,
                                      scale=self.bkgnd_std)
-            #     log_p -= np.log(param['b'])
 
         return log_p
 

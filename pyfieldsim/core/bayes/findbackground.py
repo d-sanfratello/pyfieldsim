@@ -1,18 +1,17 @@
 import numpy as np
 
 from cpnest.model import Model
-from scipy.stats import multivariate_normal as mvn
 from scipy.stats import poisson, norm
 
 
 class FindBackground(Model):
     def __init__(self, coords, counts,
-                 # background,
+                 background_meta,
                  bounds):
         self.coords = coords
         self.c = counts
-        # self.bkgnd = background[0]
-        # self.bkgnd_std = background[1]
+        self.bkgnd = background_meta['mean']
+        self.bkgnd_std = background_meta['std']
 
         self.names = ['b']
         self.bounds = bounds
@@ -23,10 +22,9 @@ class FindBackground(Model):
         log_p = super(FindBackground, self).log_prior(param)
         if np.isfinite(log_p):
             log_p = 0
-            # log_p += norm.logpdf(param['b'],
-            #                      loc=self.bkgnd,
-            #                      scale=self.bkgnd_std)
-            # log_p -= np.log(param['b'])
+            log_p += norm.logpdf(param['b'],
+                                 loc=self.bkgnd,
+                                 scale=self.bkgnd_std)
 
         return log_p
 

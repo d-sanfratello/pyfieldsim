@@ -1,13 +1,12 @@
 import numpy as np
 
 from cpnest.model import Model
-from scipy.stats import multivariate_normal as mvn
 from scipy.stats import poisson, norm
 
 
 class FindPsf2(Model):
     def __init__(self, coords, counts,
-                 background,
+                 background_meta,
                  bounds, is_flat=False):
         self.coords = np.asarray(coords).astype(int)
         self.c = np.asarray(counts).astype(int)
@@ -32,8 +31,8 @@ class FindPsf2(Model):
             self.bounds = self.bounds[:-1]
             self.log_likelihood = self.__log_l_flat
         else:
-            self.bkgnd = background[0]
-            self.bkgnd_std = background[1]
+            self.bkgnd = background_meta['meta']
+            self.bkgnd_std = background_meta['std']
             self.log_likelihood = self.__log_l_bgnd
 
         self.n_pts = len(counts)
@@ -47,7 +46,6 @@ class FindPsf2(Model):
                 log_p += norm.logpdf(param['b'],
                                      loc=self.bkgnd,
                                      scale=self.bkgnd_std)
-                # log_p -= np.log(param['b'])
 
         return log_p
 

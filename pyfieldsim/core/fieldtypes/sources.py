@@ -1,5 +1,3 @@
-import os
-
 import h5py
 import numpy as np
 
@@ -13,7 +11,7 @@ from pyfieldsim.errors.exceptions import WrongShapeError
 class Sources:
     def __init__(self, shape):
         """
-        Class that initializates a `Field` instance, to simulate an exposure
+        Class that initializates a `Sources` instance, to simulate an exposure
         through a telescope.
 
         At initialization, the class saves the shape of the output field. Every
@@ -33,7 +31,7 @@ class Sources:
         Examples
         --------
         >>> # Initializing a field of shape (100, 100).
-        >>> fld = Field((100, 100))
+        >>> fld = Sources((100, 100))
         """
         if not isinstance(shape, tuple) or len(shape) != 2:
             raise WrongShapeError
@@ -101,6 +99,10 @@ class Sources:
 
         Parameters
         ----------
+        m_min: `number`
+            The lower mass limit, expressed in solar masses. Default is `1`.
+        m_max: `number`
+            The upper mass limit, expressed in solar masses. Default is `350`.
         density: `number` in [0, 1]
             Expected number density of stars in the field. Default is `0.05`.
         e_imf: `number`
@@ -176,7 +178,7 @@ class Sources:
         `m_max`], where the limits are given at instance creation. The mass
         corresponding to a given `cimf` is given by:
 
-                 /                                                     \ 1/(1-e)
+                 /                                                     \1/(1-e)
             M = |[M_max^(1 - e) - M_min^(1 - e)] * cimf + M_min^(1 - e)|
                 \                                                     /
 
@@ -184,8 +186,6 @@ class Sources:
         ----------
         cimf: `number` in [0, 1]
             Value of the cdf to generate a mass from.
-        e: `number` > 1
-            Exponent of the IMF powerlaw. Default is `2.4`.
 
         Returns
         -------
@@ -218,13 +218,6 @@ class Sources:
         It calculates the luminosity of the star from a relation given by:
 
             L = cst * M^e
-
-        Parameters
-        ----------
-        e: `number` > 0
-            Exponent of the L-M powerlaw. Default is `3`.
-        cst: `number` > 0
-            Constant multiplying the L-M relation. Default is `1`.
 
         Returns
         -------

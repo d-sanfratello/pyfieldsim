@@ -88,12 +88,11 @@ def main():
     data_field = Field.from_field(data_file)
 
     # 1 - Find the brightest star. Take all points in a circle around some
-    # user-defined distance from the bright point (5 times the estimated psf
-    # radius?).
+    # user-defined distance from the bright point.
     brt = data_field.field.max()
     brt_coords = np.unravel_index(np.argmax(data_field.field), shape)
 
-    initial_radius = min(3 * args.initial_width, 10)
+    initial_radius = min(args.initial_width, 10)
 
     valid_coords = np.array([
         [x, y] for x in range(shape[0]) for y in range(shape[1])
@@ -323,6 +322,8 @@ def main():
             [mu_y_l, mu_y_u], [mu_x_l, mu_x_u]
         ])
 
+        # for later use
+        b_m, b_l, b_u, b_fmt = median_quantiles(post_1['b'], cl=3)
     else:
         print("-- 2 stars psf selected")
         sigma = np.median(post_2['sigma'])
@@ -370,10 +371,14 @@ def main():
             [mu_y1_l, mu_y1_u], [mu_x1_l, mu_x1_u]
         ])
 
+        # for later use
+        b_m, b_l, b_u, b_fmt = median_quantiles(post_2['b'], cl=3)
+
     pos_errors = np.array(pos_errors)
 
     fig, ax = plt.subplots()
     ax.imshow(data_field.field, cmap='Greys', origin='upper')
+    ax.set_aspect(1)
 
     if args.show_sources:
         for _, s in enumerate(coords):
@@ -395,7 +400,6 @@ def main():
                     alpha=0.5,
                     linestyle='dashed'
                 )
-                ax.set_aspect(1)
                 ax.add_artist(circle)
 
     for s, err in zip(stars, pos_errors):
@@ -409,28 +413,39 @@ def main():
                     markersize=0.5,
                     color='red', elinewidth=0.7)
 
-    ax.set_xlim(0, shape[1])
-    ax.set_ylim(0, shape[0])
+    ax.set_xlim(-0.5, shape[1] - 0.5)
+    ax.set_ylim(-0.5, shape[0] - 0.5)
 
     fig.savefig(
         out_folder.joinpath(f'recovered_psf_star.pdf'),
         bbox_inches='tight'
     )
 
-    # TODO: remove before flight
-    sys.exit(0)
-
     # 5 - Remove all points within n * s from the mean (or each mean) from the
     # dataset.
     # TODO: set min(n * s, R) with R from background (see calcs). n should
     #  be the psf sigma limit after which algorithm cannot recognise two
     #  identical (or almost identical) stars.
+
+    # Radius from which to remove points
+    remove_coords = np.empty(shape=(0, 2))
     valid_coords_mask = np.zeros(shape).astype(bool)
-    remove_coords = np.array([
-        [x, y] for x in range(shape[0]) for y in range(shape[1])
-        if dist([x, y], brt_coords) <= 1.5 * sigma
-        and data_field.field[x, y] > 0
-    ])
+    for s in stars:
+        R = sigma * np.sqrt(
+            -2 * np.log(
+                (2 * np.pi * sigma) / s.A * b_u
+            )
+        )
+        R = min(1 * sigma, R)
+
+        _remove_coords = np.array([
+            [x, y] for x in range(shape[0]) for y in range(shape[1])
+            if dist([x, y], [s.mu[1], s.mu[0]]) <= R
+            and data_field.field[x, y] > 0
+        ])
+        remove_coords = np.concatenate((remove_coords, _remove_coords))
+
+    remove_coords = remove_coords.astype(int)
     for c in remove_coords:
         valid_coords_mask[c[0], c[1]] = True
     field = np.ma.array(
@@ -438,6 +453,30 @@ def main():
         mask=valid_coords_mask,
         fill_value=np.nan
     )
+    #
+    plt.imshow(field, alpha=0.5)
+    for s in stars:
+        R = sigma * np.sqrt(
+            -2 * np.log(
+                (2 * np.pi * sigma) / s.A * b_u
+            )
+        )
+        R = min(1 * sigma, R)
+
+        circle = plt.Circle(
+            s.mu,
+            radius=R,
+            fill=False,
+            color='red',
+            linewidth=0.5,
+            alpha=0.5,
+            linestyle='solid'
+        )
+        ax.add_artist(circle)
+    plt.show()
+
+    # TODO: remove before flight
+    sys.exit(0)
 
     # 6 - Find next brightest star and select all points in a circle around
     # 5σ from the bright point.

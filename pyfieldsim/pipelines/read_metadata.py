@@ -19,12 +19,13 @@ def main():
 
     print(f'=====')
     if data_file.stem.startswith('O'):
-        print(f'Background analysis for file {data_file.name}')
+        print(f'Metadata and background analysis for file {data_file.name}')
+        metadata = read_metadata(data_file)
         bkg_analysis = Path(
             data_file.name + '_bkg_analysis.h5'
         )
 
-        metadata = read_metadata(bkg_analysis)
+        bkg_metadata = read_metadata(bkg_analysis)
     elif data_file.stem.startswith('R'):
         print(f'Recovered stars from file {data_file.name}')
 
@@ -55,6 +56,10 @@ def main():
     print(f'-----')
     for k, v in metadata.items():
         print(f'{k}\t:\t{v}')
+    if data_file.stem.startswith('O'):
+        print('-----')
+        for k, v in bkg_metadata.items():
+            print(f'{k}\t:\t{v}')
     print('=====')
 
 

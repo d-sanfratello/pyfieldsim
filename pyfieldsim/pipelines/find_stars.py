@@ -555,6 +555,8 @@ def main():
         b_u=b_u
     )
 
+    # TODO: save also star_id for any star, to make it easier to find the
+    #  plots.
     save_stars(stars, data_file, options=args.options)
 
 

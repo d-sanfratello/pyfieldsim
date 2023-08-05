@@ -67,18 +67,23 @@ def make_corner_plot(
         out_folder.joinpath(f'joint_posterior_{name}.pdf'),
         bbox_inches='tight'
     )
+    plt.close(c)
 
 
 def _find_R(
         *,
-        A, sigma, b_u
+        A, sigma, b_u,
+        is_flat
 ):
+    if is_flat:
+        return sigma
+
     R = sigma * np.sqrt(
         -2 * np.log(
             (2 * np.pi * sigma) / A * b_u
         )
     )
-    R = min(1 * sigma, R)
+    R = min(2 * sigma, R)
 
     return R
 
@@ -88,19 +93,28 @@ def mask_field(
         stars,
         mask,
         shape,
-        sigma, b_u
+        sigma, b_u,
+        is_flat,
+        force_remove=None
 ):
     remove_coords = np.empty(shape=(0, 2))
+    if force_remove is not None:
+        remove_coords = force_remove
+    else:
+        for s in stars:
+            R = _find_R(A=s.A, sigma=sigma, b_u=b_u, is_flat=is_flat)
 
-    for s in stars:
-        R = _find_R(A=s.A, sigma=sigma, b_u=b_u)
+            _remove_coords = [
+                [x, y] for x in range(shape[0]) for y in range(shape[1])
+                if dist([x, y], [s.mu[1], s.mu[0]]) <= R
+                and (not np.ma.is_masked(field[x, y]) or field[x, y] > 0)
+            ]
+            _remove_coords = np.atleast_2d(_remove_coords)
 
-        _remove_coords = np.array([
-            [x, y] for x in range(shape[0]) for y in range(shape[1])
-            if dist([x, y], [s.mu[1], s.mu[0]]) <= R
-            and field[x, y] > 0
-        ])
-        remove_coords = np.concatenate((remove_coords, _remove_coords))
+            if _remove_coords.shape == (1, 0):
+                _remove_coords = _remove_coords.reshape((0, 2))
+
+            remove_coords = np.vstack((remove_coords, _remove_coords))
 
     remove_coords = remove_coords.astype(int)
     for c in remove_coords:
@@ -145,6 +159,7 @@ def plot_recovered_stars(
         shape,
         out_path,
         show_sources,
+        is_flat,
         sources=None,
         brt_coords=None,
         radius=None,
@@ -174,9 +189,9 @@ def plot_recovered_stars(
             )
             ax.add_artist(good_px)
 
-            if _ == 0:
+            if _ == 0 and radius is not None:
                 circle = plt.Circle(
-                    tuple(brt_coords),
+                    (brt_coords[1], brt_coords[0]),
                     radius=radius,
                     fill=False,
                     color='blue',
@@ -198,7 +213,7 @@ def plot_recovered_stars(
                     color='red', elinewidth=0.7)
 
         if show_mask:
-            R = _find_R(A=s.A, sigma=sigma, b_u=b_u)
+            R = _find_R(A=s.A, sigma=sigma, b_u=b_u, is_flat=is_flat)
 
             circle = plt.Circle(
                 s.mu,
@@ -215,8 +230,7 @@ def plot_recovered_stars(
     ax.set_ylim(-0.5, shape[0] - 0.5)
 
     fig.savefig(out_path, bbox_inches='tight')
-
-    return fig
+    plt.close(fig)
 
 
 def run_mcmc(
@@ -254,9 +268,15 @@ def run_mcmc(
 # noinspection PyArgumentList
 def _select_1_2(
         post_1, post_2, *,
-        stars, pos_errors, select_1=True,
-        b_cl=3
+        stars, pos_errors,
+        is_flat,
+        select_1=True,
+        b_cl=3,
+        sigma=None
 ):
+    # if flat field, this value is returned
+    b_u = None
+
     if select_1:
         print("-- 1 star psf selected")
         sigma = np.median(post_1['sigma'])
@@ -284,7 +304,8 @@ def _select_1_2(
         ])
 
         # for later use
-        b_m, b_l, b_u, b_fmt = median_quantiles(post_1['b'], cl=b_cl)
+        if not is_flat:
+            b_m, b_l, b_u, b_fmt = median_quantiles(post_1['b'], cl=b_cl)
     else:
         print("-- 2 stars psf selected")
         sigma = np.median(post_2['sigma'])
@@ -334,19 +355,63 @@ def _select_1_2(
             ])
 
         # for later use
-        b_m, b_l, b_u, b_fmt = median_quantiles(post_2['b'], cl=b_cl)
+        if not is_flat:
+            b_m, b_l, b_u, b_fmt = median_quantiles(post_2['b'], cl=b_cl)
 
     return sigma, b_u
 
 
-def _select_s_b():
-    pass
+def _select_s_b(
+        post_1, post_2, *,
+        stars, pos_errors,
+        sigma,
+        is_flat,
+        select_1=True,
+        b_cl=3
+):
+    # if flat field, this value is returned
+    b_u = None
+
+    if select_1 or is_flat:
+        print("-- Star identified")
+        stars.append(
+            new_star(
+                A=np.median(post_1['A']),
+                mu=[
+                    np.median(post_1['mu_y']),
+                    np.median(post_1['mu_x'])
+                ],
+                sigma=sigma * np.eye(2)
+            )
+        )
+
+        A_m, A_l, A_u, A_fmt = median_quantiles(post_1['A'])
+        mu_y_m, mu_y_l, mu_y_u, y_fmt = median_quantiles(post_1['mu_y'])
+        mu_x_m, mu_x_l, mu_x_u, x_fmt = median_quantiles(post_1['mu_x'])
+        print(f"--- Star at [{y_fmt(mu_y_m)} (-{mu_y_l:.1e}, +{mu_y_u:.1e}),"
+              f" {x_fmt(mu_x_m)} (-{mu_x_l:.1e}, +{mu_x_u:.1e})]")
+        print(f"    of brightness {A_fmt(A_m)} (-{A_l:.1e} +{A_u:.1e})")
+
+        pos_errors.append([
+            [mu_y_l, mu_y_u], [mu_x_l, mu_x_u]
+        ])
+
+        # for later use
+        if not is_flat:
+            b_m, b_l, b_u, b_fmt = median_quantiles(post_1['b'], cl=b_cl)
+    else:
+        print("-- Found background")
+        b_u = np.nan
+
+    return sigma, b_u
 
 
 def select_hypothesis(*,
     hyp_1, hyp_2, logZ, logB_lim_hyp2,
     stars, pos_errors,
-    post_1, post_2
+    post_1, post_2,
+    is_flat,
+    sigma=None,
 ):
     logBayesFactor = logZ[hyp_1] - logZ[hyp_2]
 
@@ -356,21 +421,37 @@ def select_hypothesis(*,
 
     if 'b' in [hyp_1, hyp_2]:
         make_selection = _select_s_b
+
+        if sigma is None:
+            raise ValueError(
+                "sigma cannot be `None`."
+            )
+
+        if not (hyp_2 == 'b'):
+            # if hyp_2 is not 'b' but 's', the two hypotesis are switched.
+
+            post_tmp = post_1.copy()
+            post_1 = post_2.copy()
+            post_2 = post_tmp
     else:
         make_selection = _select_1_2
 
     if logBayesFactor >= logB_lim_hyp2:
-        return make_selection(
+        return *make_selection(
             post_1, post_2,
             stars=stars, pos_errors=pos_errors,
-            select_1=True
-        )
+            sigma=sigma,
+            select_1=True,
+            is_flat=is_flat
+        ), hyp_1
     else:
-        return make_selection(
+        return *make_selection(
             post_1, post_2,
             stars=stars, pos_errors=pos_errors,
-            select_1=False
-        )
+            sigma=sigma,
+            select_1=False,
+            is_flat=is_flat
+        ), hyp_2
 
 
 def select_valid_pixels(

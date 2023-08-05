@@ -302,6 +302,8 @@ class Sources:
             'seed': self.seed,
             'density': self.__density,
             'e_imf': self.__e_imf,
+            'm_min': self.__m_min,
+            'm_max': self.__m_max,
             'e_lm': self.__e_lm,
             'cst_lm': self.__cst_lm
         }

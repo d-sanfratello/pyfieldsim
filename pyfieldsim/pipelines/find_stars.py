@@ -1,18 +1,12 @@
 import argparse as ag
-import sys
 
-import cpnest
 import h5py
-import matplotlib.pyplot as plt
 import numpy as np
 import os
 
-from corner import corner
 from pathlib import Path
 
 from pyfieldsim.core.fieldtypes.field import Field
-from pyfieldsim.core.stars import new_star
-
 from pyfieldsim.core.stars.find_utils import (
     dist,
     mask_field,
@@ -48,6 +42,9 @@ def main():
     parser.add_argument("-o", "--output",
                         dest='out_folder', default=None,
                         help="")
+    parser.add_argument("--no-force", action='store_false',
+                        dest='no_force', default=True,
+                        help="")
     parser.add_argument("--options",
                         dest='options', default=None,
                         help="")
@@ -60,6 +57,9 @@ def main():
         out_folder = Path(args.out_folder)
     plot_folder = out_folder.joinpath('plots')
     samplings_folder = out_folder.joinpath('samplings')
+
+    plot_folder.mkdir(parents=True, exist_ok=True)
+    samplings_folder.mkdir(parents=True, exist_ok=True)
 
     data_file = Path(args.data_file)
 
@@ -198,22 +198,24 @@ def main():
     # 10^1 -> strong evidence
     # 10^1.5 -> very strong evidence
     # 10^2 -> decisive evidence
-    sigma, b_u = select_hypothesis(
+    sigma, b_u, hyp_psf = select_hypothesis(
         hyp_1='1', hyp_2='2',
         logZ=logZ_psf,
         logB_lim_hyp2=-1 * np.log(10),
         stars=stars,
         pos_errors=pos_errors,
         post_1=post_1,
-        post_2=post_2
+        post_2=post_2,
+        is_flat=args.is_flat,
     )
 
-    fig = plot_recovered_stars(
+    plot_recovered_stars(
         data_field.field,
         stars=stars,
         pos_errors=pos_errors,
         shape=shape,
         show_sources=args.show_sources,
+        is_flat=args.is_flat,
         sources=coords,
         brt_coords=brt_coords,
         radius=initial_radius,
@@ -227,16 +229,18 @@ def main():
         stars=stars,
         mask=valid_coords_mask,
         shape=shape,
-        sigma=sigma, b_u=b_u
+        sigma=sigma, b_u=b_u,
+        is_flat=args.is_flat
     )
 
-    fig = plot_recovered_stars(
+    plot_recovered_stars(
         data_field.field,
         stars=stars,
         pos_errors=pos_errors,
         shape=shape,
         out_path=plot_folder.joinpath(f'removed_pixels_psf_star.pdf'),
         show_sources=True,
+        is_flat=args.is_flat,
         sources=coords,
         brt_coords=brt_coords,
         radius=initial_radius,
@@ -247,7 +251,7 @@ def main():
     )
 
     # TODO: remove before flight
-    sys.exit(0)
+    # sys.exit(0)
 
     # 6 - Find next brightest star and select all points in a circle around
     # 5σ from the bright point.
@@ -269,37 +273,42 @@ def main():
         brt_coords = np.unravel_index(np.argmax(field), shape)
 
         # TODO: Check if creates aliases.
-        radius = min(3 * sigma, 10)
+        radius = 2 * sigma
 
         valid_coords, valid_counts = select_valid_pixels(
-            field, radius=radius,
+            field,
+            radius=radius,
             shape=shape,
             brt_coords=brt_coords
         )
 
         if valid_coords.shape[0] <= limit_points:
-            for c in valid_coords:
-                valid_coords_mask[c[0], c[1]] = True
-
-            field = np.ma.array(
-                data=field,
+            field, valid_coords_mask = mask_field(
+                field,
+                stars=stars,
                 mask=valid_coords_mask,
-                fill_value=np.nan
+                shape=shape,
+                sigma=sigma, b_u=b_u,
+                is_flat=args.is_flat,
+                force_remove=valid_coords
             )
             print("-- Too few points to infer a star")
             continue
 
         # 7 - Check against background only or 1 star in the dataset.
         # Compare evidences.
+        mins = np.min(valid_coords, axis=0)
+        maxs = np.max(valid_coords, axis=0)
         m_bounds = [
-            [brt_coords[0] - 1, brt_coords[0] + 1],
-            [brt_coords[1] - 1, brt_coords[1] + 1]
+            [mins[0], maxs[0]],
+            [mins[1], maxs[1]]
         ]
         A_bounds = [
             [brt / 10, 100 * brt]
         ]
         b_bounds = [[
-            max(bkgnd_analysis_metadata['mean']
+            max(
+                bkgnd_analysis_metadata['mean']
                 - 2 * bkgnd_analysis_metadata['std'], 1),
             bkgnd_analysis_metadata['mean'] + bkgnd_analysis_metadata['std']
         ]]
@@ -314,27 +323,35 @@ def main():
             is_flat=args.is_flat
         )
 
-        star_path = Path(f'./sampling_output_star_{star_id}/')
         print("-- Testing against star hypothesis")
-        work = cpnest.CPNest(
-            fit_model_s,
+        post_s, logZ_s = run_mcmc(
+            model=fit_model_s,
+            name=f'star_{star_id}',
+            out_folder=plot_folder,
             verbose=1,
-            nlive=1000,  # 1000
-            maxmcmc=5000,  # 5000
-            nensemble=4,
-            output=star_path,
+            force=args.no_force
         )
-        work.run()
-        post_s = work.posterior_samples.ravel()
+        logZ = {'s': logZ_s}
 
-        logZ = {
-            's': work.logZ
-        }
-
-        columns_s = [post_s[par] for par in post_s.dtype.names
-                     if par not in ['logL', 'logPrior']]
-        samples_s = np.column_stack(columns_s)
-
+        # # If the stars lies farther than 1 sigma from the brightest point,
+        # # the star hypothesis is discarted.
+        # s_brt_dist = dist(
+        #     (np.median(post_s['mu_y']), np.median(post_s['mu_x'])),
+        #     brt_coords
+        # )
+        # if s_brt_dist > sigma:
+        #     # if the found star lies farther than 1 sigma from the brightest
+        #     # pixel it may be an alias
+        #     field, valid_coords_mask = mask_field(
+        #         field,
+        #         stars=stars,
+        #         mask=valid_coords_mask,
+        #         shape=shape,
+        #         sigma=sigma, b_u=b_u,
+        #         is_flat=args.is_flat,
+        #         force_remove=valid_coords
+        #     )
+        #     continue
         if not args.is_flat:
             print("-- Testing against pure background hypothesis")
             bounds = b_bounds
@@ -344,123 +361,198 @@ def main():
                 bounds
             )
 
-            background_path = Path(f'./sampling_output_bgnd_{star_id}/')
-            work = cpnest.CPNest(
-                fit_model_b,
-                verbose=0,
-                nlive=1000,  # 1000
-                maxmcmc=5000,  # 5000
-                nensemble=1,
-                output=background_path,
-            )
-            work.run()
-            post_b = work.posterior_samples.ravel()
-
-            logZ['b'] = work.logZ
-
-            columns_b = [post_2[par] for par in post_b.dtype.names
-                         if par not in ['logL', 'logPrior']]
-            samples_b = np.column_stack(columns_b)
-
-        if (not args.is_flat and logZ['s'] >= logZ['b']) or args.is_flat:
-            s = new_star(
-                    A=np.median(post_s['A']),
-                    mu=[
-                        np.median(post_s['mu_y']),
-                        np.median(post_s['mu_x'])
-                    ],
-                    sigma=sigma * np.eye(2)
-                )
-            stars.append(s)
-            A_m, A_l, A_u, A_fmt = median_quantiles(post_s['A'])
-            mu_y_m, mu_y_l, mu_y_u, y_fmt = median_quantiles(post_s['mu_y'])
-            mu_x_m, mu_x_l, mu_x_u, x_fmt = median_quantiles(post_s['mu_x'])
-            print(
-                f"--- Star at [{y_fmt(mu_y_m)} (-{mu_y_l:.1e}, +{mu_y_u:.1e}),"
-                f" {x_fmt(mu_x_m)} (-{mu_x_l:.1e}, +{mu_x_u:.1e})]")
-            print(f"    of brightness {A_fmt(A_m)} (-{A_l:.1e} +{A_u:.1e})")
-
-            pos_errors.append([
-                [mu_y_l, mu_y_u], [mu_x_l, mu_x_u]
-            ])
-
-            # for later use
-            b_m, b_l, b_u, b_fmt = median_quantiles(post_s['b'], cl=3)
-
-            # 8 - Remove all points within R from the mean from the dataset.
-            R = sigma * np.sqrt(
-                -2 * np.log(
-                    (2 * np.pi * sigma) / s.A * b_u
-                )
-            )
-            R = min(1 * sigma, R)
-
-            remove_coords = np.array([
-                [x, y] for x in range(shape[0]) for y in range(shape[1])
-                if dist([x, y], [s.mu[1], s.mu[0]]) <= R
-                   and data_field.field[x, y] > 0
-            ])
-            remove_coords = remove_coords.astype(int)
-
-            for c in remove_coords:
-                valid_coords_mask[c[0], c[1]] = True
-            field = np.ma.array(
-                data=data_field.field,
-                mask=valid_coords_mask,
-                fill_value=np.nan
+            post_b, logZ_b = run_mcmc(
+                model=fit_model_b,
+                name=f'bgnd_{star_id}',
+                out_folder=plot_folder,
+                verbose=1,
+                force=args.no_force
             )
         else:
-            print("-- Found background")
-            for c in valid_coords:
-                valid_coords_mask[c[0], c[1]] = True
-            field = np.ma.array(
-                data=data_field.field,
+            logZ_b = -np.inf
+
+        for s in stars:
+            s_ = (np.median(post_s['mu_y']), np.median(post_s['mu_x']))
+            if dist((s.mu[0], s.mu[1]),
+                    s_) < sigma:
+                logZ_b = +np.inf
+                break
+
+        logZ['b'] = logZ_b
+
+        # TODO: complete transition and test
+
+        sigma, b_u, hyp_s_b = select_hypothesis(
+            hyp_1='s', hyp_2='b',
+            logZ=logZ,
+            logB_lim_hyp2=0.5 * np.log(10),
+            stars=stars,
+            pos_errors=pos_errors,
+            post_1=post_s,
+            post_2=post_b,
+            is_flat=args.is_flat,
+            sigma=sigma
+        )
+
+        plot_recovered_stars(
+            data_field.field,
+            stars=stars,
+            pos_errors=pos_errors,
+            shape=shape,
+            show_sources=args.show_sources,
+            is_flat=args.is_flat,
+            sources=coords,
+            brt_coords=brt_coords,
+            radius=radius,
+            out_path=plot_folder.joinpath(f'recovered_{star_id}.pdf')
+        )
+
+        # 8 - Remove all points within R from the mean from the dataset.
+        if not args.is_flat and not np.isnan(b_u):
+            field, valid_coords_mask = mask_field(
+                field,
+                stars=stars,
                 mask=valid_coords_mask,
-                fill_value=np.nan
+                shape=shape,
+                sigma=sigma, b_u=b_u,
+                is_flat=args.is_flat
+            )
+
+            plot_recovered_stars(
+                data_field.field,
+                stars=stars,
+                pos_errors=pos_errors,
+                shape=shape,
+                out_path=plot_folder.joinpath(f'removed_pixels_star'
+                                              f'{star_id}.pdf'),
+                show_sources=True,
+                is_flat=args.is_flat,
+                sources=coords,
+                brt_coords=brt_coords,
+                radius=initial_radius,
+                show_mask=True,
+                masked_field=field,
+                sigma=sigma,
+                b_u=b_u
+            )
+        elif np.isnan(b_u):
+            field, valid_coords_mask = mask_field(
+                field,
+                stars=stars,
+                mask=valid_coords_mask,
+                shape=shape,
+                sigma=sigma, b_u=b_u,
+                is_flat=args.is_flat,
+                force_remove=valid_coords
+            )
+
+            plot_recovered_stars(
+                data_field.field,
+                stars=stars,
+                pos_errors=pos_errors,
+                shape=shape,
+                out_path=plot_folder.joinpath(f'removed_pixels_star'
+                                              f'{star_id}.pdf'),
+                show_sources=True,
+                is_flat=args.is_flat,
+                sources=coords,
+                brt_coords=brt_coords,
+                radius=initial_radius,
+                show_mask=True,
+                masked_field=field,
+                sigma=sigma,
+                b_u=b_u
             )
             continue
 
-        fig, ax = plt.subplots()
-        ax.imshow(data_field.field, cmap='Greys', origin='upper')
-        if args.show_sources:
-            for s in coords:
-                ax.scatter(s[1], s[0],
-                           marker='o', edgecolor='green', facecolor='none')
-        for s in stars:
-            ax.scatter(s.mu[0], s.mu[1], marker='+', color='red')
-        ax.set_xlim(0, shape[1])
-        ax.set_ylim(0, shape[0])
-
-        fig.savefig(
-            out_folder.joinpath(f'recovered_stars_star{star_id}.pdf'),
-            bbox_inches='tight'
-        )
-
-        star_id += 1
-
         # 9 - Iterate from 6# until background term dominates in a dataset.
+        star_id += 1
 
     # TODO: Correlate points within deletion limit and some more (twice?)
     #  from each star to check for aliases. Maybe use `correlate` from
     #  `scipy.signal` as correlate([[star_c_x, star_c_y]], [s1, s2, s3],
     #  ...), with s_i = [s_i_x, s_i_y], s_i being the stars inside that
     #  region.
+    # Correlating stars between the first (fifo) and the ones within 2 sigmas
+    print("- Removing aliases")
+    if hyp_psf == '1':
+        psf_stars = stars[:1]
+
+        analized_stars_idx = [
+            _ for _, s in enumerate(stars)
+            if dist(s.mu, psf_stars[0].mu) <= 2 * sigma
+        ]
+    else:
+        psf_stars = stars[:2]
+
+        analized_stars_idx = [
+            _+2 for _, s in enumerate(stars[2:])
+            if dist(s.mu, psf_stars[0].mu) <= 2 * sigma
+            or dist(s.mu, psf_stars[1].mu) <= 2 * sigma
+        ]
+
+    if len(analized_stars_idx) != 0:
+        psf_stars = np.array([
+            p.mu for p in psf_stars
+        ])
+        analized_stars = np.array([
+            stars[_].mu for _ in analized_stars_idx
+        ])
+
+        mean_analized_stars = np.mean(analized_stars, axis=0)
+
+        for p in psf_stars:
+            if dist(p, mean_analized_stars) <= 1 * sigma:
+                for idx in sorted(analized_stars_idx, reverse=True):
+                    del stars[idx]
+                break
+
+    ctr = len(psf_stars)
+    remaining_stars = stars[ctr:]
+    while len(remaining_stars) > 0:
+        ref_star = remaining_stars[0]
+        ctr += 1
+
+        analized_stars_idx = [
+            _ + ctr for _, s in enumerate(stars[ctr:])
+            if dist(s.mu, ref_star.mu) <= 2 * sigma
+        ]
+        analized_stars = np.array([
+            stars[_].mu for _ in analized_stars_idx
+        ])
+        mean_analized_stars = np.mean(analized_stars, axis=0)
+
+        if dist(ref_star.mu, mean_analized_stars) <= 1 * sigma:
+            for idx in sorted(analized_stars_idx, reverse=True):
+                del stars[idx]
+
+        remaining_stars = stars[ctr:]
 
     # 10 - Profit.
-    fig, ax = plt.subplots()
-    ax.imshow(data_field.field, cmap='Greys', origin='upper')
-    if args.show_sources:
-        for s in coords:
-            ax.scatter(s[1], s[0],
-                       marker='o', edgecolor='green', facecolor='none')
-    for s in stars:
-        ax.scatter(s.mu[0], s.mu[1], marker='+', color='red')
-    ax.set_xlim(0, shape[1])
-    ax.set_ylim(0, shape[0])
+    plot_recovered_stars(
+        data_field.field,
+        stars=stars,
+        pos_errors=pos_errors,
+        shape=shape,
+        show_sources=args.show_sources,
+        is_flat=args.is_flat,
+        sources=coords,
+        out_path=plot_folder.joinpath(f'recovered_stars_all.pdf')
+    )
 
-    fig.savefig(
-        out_folder.joinpath(f'recovered_stars_all.pdf'),
-        bbox_inches='tight'
+    plot_recovered_stars(
+        data_field.field,
+        stars=stars,
+        pos_errors=pos_errors,
+        shape=shape,
+        out_path=plot_folder.joinpath(f'removed_pixels_all.pdf'),
+        show_sources=True,
+        is_flat=args.is_flat,
+        sources=coords,
+        show_mask=True,
+        masked_field=field,
+        sigma=sigma,
+        b_u=b_u
     )
 
     save_stars(stars, data_file, options=args.options)

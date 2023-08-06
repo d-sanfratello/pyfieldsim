@@ -376,9 +376,9 @@ def _select_s_b(
         b_cl=3
 ):
     # if flat field, this value is returned
-    b_u = None
+    b_u = np.nan
 
-    if select_1 or is_flat:
+    if select_1:  # or is_flat:
         print("-- Star identified")
 
         A_m, A_l, A_u, A_fmt = median_quantiles(post_1['A'])

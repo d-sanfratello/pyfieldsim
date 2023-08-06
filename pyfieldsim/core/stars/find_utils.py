@@ -281,6 +281,13 @@ def _select_1_2(
         print("-- 1 star psf selected")
         sigma = np.median(post_1['sigma'])
 
+        A_m, A_l, A_u, A_fmt = median_quantiles(post_1['A'])
+        mu_y_m, mu_y_l, mu_y_u, y_fmt = median_quantiles(post_1['mu_y'])
+        mu_x_m, mu_x_l, mu_x_u, x_fmt = median_quantiles(post_1['mu_x'])
+        print(f"--- Star at [{y_fmt(mu_y_m)} (-{mu_y_l:.1e}, +{mu_y_u:.1e}),"
+              f" {x_fmt(mu_x_m)} (-{mu_x_l:.1e}, +{mu_x_u:.1e})]")
+        print(f"    of brightness {A_fmt(A_m)} (-{A_l:.1e} +{A_u:.1e})")
+
         stars.append(
             new_star(
                 A=np.median(post_1['A']),
@@ -288,16 +295,10 @@ def _select_1_2(
                     np.median(post_1['mu_y']),
                     np.median(post_1['mu_x'])
                 ],
-                sigma=sigma * np.eye(2)
+                sigma=sigma * np.eye(2),
+                fmts=[A_fmt, y_fmt, x_fmt]
             )
         )
-
-        A_m, A_l, A_u, A_fmt = median_quantiles(post_1['A'])
-        mu_y_m, mu_y_l, mu_y_u, y_fmt = median_quantiles(post_1['mu_y'])
-        mu_x_m, mu_x_l, mu_x_u, x_fmt = median_quantiles(post_1['mu_x'])
-        print(f"--- Star at [{y_fmt(mu_y_m)} (-{mu_y_l:.1e}, +{mu_y_u:.1e}),"
-              f" {x_fmt(mu_x_m)} (-{mu_x_l:.1e}, +{mu_x_u:.1e})]")
-        print(f"    of brightness {A_fmt(A_m)} (-{A_l:.1e} +{A_u:.1e})")
 
         pos_errors.append([
             [mu_y_l, mu_y_u], [mu_x_l, mu_x_u]
@@ -315,17 +316,6 @@ def _select_1_2(
                 A = np.median(post_2['A0'])
             else:
                 A = np.median(post_2['A0'] * post_2['f'])
-
-            stars.append(
-                new_star(
-                    A=A,
-                    mu=[
-                        np.median(post_2[f'mu_y{_}']),
-                        np.median(post_2[f'mu_x{_}'])
-                    ],
-                    sigma=sigma * np.eye(2)
-                )
-            )
 
             if _ == 0:
                 A_m, A_l, A_u, A_fmt = median_quantiles(post_2[f'A0'])
@@ -349,6 +339,18 @@ def _select_1_2(
                 print(
                     f"--- fraction is {f_fmt(f_m)} (-{f_l:.1e} +{f_u:.1e})"
                 )
+
+            stars.append(
+                new_star(
+                    A=A,
+                    mu=[
+                        np.median(post_2[f'mu_y{_}']),
+                        np.median(post_2[f'mu_x{_}'])
+                    ],
+                    sigma=sigma * np.eye(2),
+                    fmts=[A_fmt, y_fmt, x_fmt]
+                )
+            )
 
             pos_errors.append([
                 [mu_y_l, mu_y_u], [mu_x_l, mu_x_u]
@@ -374,16 +376,6 @@ def _select_s_b(
 
     if select_1 or is_flat:
         print("-- Star identified")
-        stars.append(
-            new_star(
-                A=np.median(post_1['A']),
-                mu=[
-                    np.median(post_1['mu_y']),
-                    np.median(post_1['mu_x'])
-                ],
-                sigma=sigma * np.eye(2)
-            )
-        )
 
         A_m, A_l, A_u, A_fmt = median_quantiles(post_1['A'])
         mu_y_m, mu_y_l, mu_y_u, y_fmt = median_quantiles(post_1['mu_y'])
@@ -391,6 +383,18 @@ def _select_s_b(
         print(f"--- Star at [{y_fmt(mu_y_m)} (-{mu_y_l:.1e}, +{mu_y_u:.1e}),"
               f" {x_fmt(mu_x_m)} (-{mu_x_l:.1e}, +{mu_x_u:.1e})]")
         print(f"    of brightness {A_fmt(A_m)} (-{A_l:.1e} +{A_u:.1e})")
+
+        stars.append(
+            new_star(
+                A=np.median(post_1['A']),
+                mu=[
+                    np.median(post_1['mu_y']),
+                    np.median(post_1['mu_x'])
+                ],
+                sigma=sigma * np.eye(2),
+                fmts=[A_fmt, y_fmt, x_fmt]
+            )
+        )
 
         pos_errors.append([
             [mu_y_l, mu_y_u], [mu_x_l, mu_x_u]
@@ -477,7 +481,13 @@ def update_title_fmts(c, post):
     for _, ax in enumerate(c.axes):
         if (_ == 0) or (_ % (dim_space+1) == 0):
             name = names[n_]
-            val_50, val_m, val_p, fmt = median_quantiles(post[name])
+
+            if name == 'f':
+                val_50, val_m, val_p, fmt = median_quantiles(
+                    post['A0'] * post['f']
+                )
+            else:
+                val_50, val_m, val_p, fmt = median_quantiles(post[name])
 
             old_title = ax.title._text
 

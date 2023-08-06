@@ -10,6 +10,9 @@ from corner import corner
 from pyfieldsim.core.stars import new_star
 
 
+plt.switch_backend('agg')
+
+
 def dist(x1, x2):
     x1 = np.asarray(x1)
     x2 = np.asarray(x2)
@@ -363,6 +366,7 @@ def _select_1_2(
     return sigma, b_u
 
 
+# noinspection PyArgumentList
 def _select_s_b(
         post_1, post_2, *,
         stars, pos_errors,
@@ -410,12 +414,13 @@ def _select_s_b(
     return sigma, b_u
 
 
-def select_hypothesis(*,
-    hyp_1, hyp_2, logZ, logB_lim_hyp2,
-    stars, pos_errors,
-    post_1, post_2,
-    is_flat,
-    sigma=None,
+def select_hypothesis(
+        *,
+        hyp_1, hyp_2, logZ, logB_lim_hyp2,
+        stars, pos_errors,
+        post_1, post_2,
+        is_flat,
+        sigma=None,
 ):
     logBayesFactor = logZ[hyp_1] - logZ[hyp_2]
 
@@ -473,6 +478,7 @@ def select_valid_pixels(
     return valid_coords, valid_counts
 
 
+# noinspection PyArgumentList,PyProtectedMember
 def update_title_fmts(c, post):
     dim_space = np.sqrt(len(c.axes)).astype(int)
     names = post.dtype.names

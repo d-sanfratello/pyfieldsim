@@ -43,12 +43,13 @@ def main():
         mu_x = eval(recovered_stars['mu_x'])
         mu_y = eval(recovered_stars['mu_y'])
         A = eval(recovered_stars['A'])
+        ids = eval(recovered_stars['id'])
 
         metadata = {
             'N stars': n_stars
         }
-        for _ in range(metadata['N stars']):
-            metadata[f's_{_}'] = f'({mu_x[_]}, {mu_y[_]})\tA = {A[_]:1.3e}'
+        for _, idx in enumerate(ids):
+            metadata[f's_{idx}'] = f'({mu_x[_]}, {mu_y[_]})\tA = {A[_]:1.3e}'
     else:
         print(f'Metadata for file {data_file.name}')
         metadata = read_metadata(data_file)

@@ -366,6 +366,15 @@ def main():
             )
         else:
             logZ_b = -np.inf
+            post_b = None
+
+        # If bright point (in recovery) lies farther than 2 sigma from the
+        # saved mean, it means we are analyzing a different region.
+        if dist(
+                brt_coords,
+                (np.median(post_s['mu_y']), np.median(post_s['mu_x']))
+        ) >= radius:
+            logZ_b = +np.inf
 
         for s in stars:
             s_ = (np.median(post_s['mu_y']), np.median(post_s['mu_x']))
@@ -433,7 +442,7 @@ def main():
                 sigma=sigma,
                 b_u=b_u
             )
-        elif np.isnan(b_u):
+        elif args.is_flat or np.isnan(b_u):
             field, valid_coords_mask = mask_field(
                 field,
                 stars=stars,
@@ -461,6 +470,9 @@ def main():
                 sigma=sigma,
                 b_u=b_u
             )
+
+            if args.is_flat and hyp_s_b == 's':
+                star_id += 1
             continue
 
         # 9 - Iterate from 6# until background term dominates in a dataset.
@@ -468,20 +480,25 @@ def main():
 
     # Correlating stars between the first (fifo) and the ones within 2 sigmas
     print("- Removing aliases")
+    if args.is_flat:
+        n_limit = 3
+    else:
+        n_limit = 2
+
     if hyp_psf == '1':
         psf_stars = stars[:1]
 
         analized_stars_idx = [
             _ for _, s in enumerate(stars)
-            if dist(s.mu, psf_stars[0].mu) <= 2 * sigma
+            if dist(s.mu, psf_stars[0].mu) <= n_limit * sigma
         ]
     else:
         psf_stars = stars[:2]
 
         analized_stars_idx = [
             _+2 for _, s in enumerate(stars[2:])
-            if dist(s.mu, psf_stars[0].mu) <= 2 * sigma
-            or dist(s.mu, psf_stars[1].mu) <= 2 * sigma
+            if dist(s.mu, psf_stars[0].mu) <= n_limit * sigma
+            or dist(s.mu, psf_stars[1].mu) <= n_limit * sigma
         ]
 
     if len(analized_stars_idx) > 1:
@@ -495,7 +512,7 @@ def main():
         mean_analized_stars = np.mean(analized_stars, axis=0)
 
         for p in psf_stars:
-            if dist(p, mean_analized_stars) <= 2 * sigma:
+            if dist(p, mean_analized_stars) <= n_limit * sigma:
                 for idx in sorted(analized_stars_idx, reverse=True):
                     del stars[idx]
                     del saved_ids[idx]
@@ -509,7 +526,7 @@ def main():
 
         analized_stars_idx = [
             _ + ctr for _, s in enumerate(stars[ctr:])
-            if dist(s.mu, ref_star.mu) <= 2 * sigma
+            if dist(s.mu, ref_star.mu) <= n_limit * sigma
         ]
         if len(analized_stars_idx) > 1:
             analized_stars = np.array([
@@ -517,7 +534,7 @@ def main():
             ])
             mean_analized_stars = np.mean(analized_stars, axis=0)
 
-            if dist(ref_star.mu, mean_analized_stars) <= 1 * sigma:
+            if dist(ref_star.mu, mean_analized_stars) <= n_limit * sigma:
                 for idx in sorted(analized_stars_idx, reverse=True):
                     del stars[idx]
                     del saved_ids[idx]

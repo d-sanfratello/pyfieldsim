@@ -270,9 +270,7 @@ def main():
 
         brt_coords = np.unravel_index(np.argmax(field), shape)
 
-        # TODO: Check if creates aliases.
         radius = 2 * sigma
-
         valid_coords, valid_counts = select_valid_pixels(
             field,
             radius=radius,
@@ -378,8 +376,7 @@ def main():
 
         logZ['b'] = logZ_b
 
-        # TODO: complete transition and test
-
+        # noinspection PyUnboundLocalVariable
         sigma, b_u, hyp_s_b = select_hypothesis(
             hyp_1='s', hyp_2='b',
             logZ=logZ,
@@ -469,11 +466,6 @@ def main():
         # 9 - Iterate from 6# until background term dominates in a dataset.
         star_id += 1
 
-    # TODO: Correlate points within deletion limit and some more (twice?)
-    #  from each star to check for aliases. Maybe use `correlate` from
-    #  `scipy.signal` as correlate([[star_c_x, star_c_y]], [s1, s2, s3],
-    #  ...), with s_i = [s_i_x, s_i_y], s_i being the stars inside that
-    #  region.
     # Correlating stars between the first (fifo) and the ones within 2 sigmas
     print("- Removing aliases")
     if hyp_psf == '1':
@@ -492,7 +484,7 @@ def main():
             or dist(s.mu, psf_stars[1].mu) <= 2 * sigma
         ]
 
-    if len(analized_stars_idx) != 0:
+    if len(analized_stars_idx) > 1:
         psf_stars = np.array([
             p.mu for p in psf_stars
         ])
@@ -503,7 +495,7 @@ def main():
         mean_analized_stars = np.mean(analized_stars, axis=0)
 
         for p in psf_stars:
-            if dist(p, mean_analized_stars) <= 1 * sigma:
+            if dist(p, mean_analized_stars) <= 2 * sigma:
                 for idx in sorted(analized_stars_idx, reverse=True):
                     del stars[idx]
                     del saved_ids[idx]
@@ -519,15 +511,16 @@ def main():
             _ + ctr for _, s in enumerate(stars[ctr:])
             if dist(s.mu, ref_star.mu) <= 2 * sigma
         ]
-        analized_stars = np.array([
-            stars[_].mu for _ in analized_stars_idx
-        ])
-        mean_analized_stars = np.mean(analized_stars, axis=0)
+        if len(analized_stars_idx) > 1:
+            analized_stars = np.array([
+                stars[_].mu for _ in analized_stars_idx
+            ])
+            mean_analized_stars = np.mean(analized_stars, axis=0)
 
-        if dist(ref_star.mu, mean_analized_stars) <= 1 * sigma:
-            for idx in sorted(analized_stars_idx, reverse=True):
-                del stars[idx]
-                del saved_ids[idx]
+            if dist(ref_star.mu, mean_analized_stars) <= 1 * sigma:
+                for idx in sorted(analized_stars_idx, reverse=True):
+                    del stars[idx]
+                    del saved_ids[idx]
 
         remaining_stars = stars[ctr:]
 

@@ -250,13 +250,11 @@ def main():
         b_u=b_u
     )
 
-    # TODO: remove before flight
-    # sys.exit(0)
-
     # 6 - Find next brightest star and select all points in a circle around
     # 5σ from the bright point.
     exit_loop = False
     star_id = len(stars) + 1
+    saved_ids = [_ + 1 for _ in range(len(stars))]
 
     while not exit_loop:
         print(f"- Finding star #{star_id}")
@@ -407,6 +405,9 @@ def main():
             out_path=plot_folder.joinpath(f'recovered_{star_id}.pdf')
         )
 
+        if hyp_s_b == 's':
+            saved_ids.append(star_id)
+
         # 8 - Remove all points within R from the mean from the dataset.
         if not args.is_flat and not np.isnan(b_u):
             field, valid_coords_mask = mask_field(
@@ -505,6 +506,7 @@ def main():
             if dist(p, mean_analized_stars) <= 1 * sigma:
                 for idx in sorted(analized_stars_idx, reverse=True):
                     del stars[idx]
+                    del saved_ids[idx]
                 break
 
     ctr = len(psf_stars)
@@ -525,6 +527,7 @@ def main():
         if dist(ref_star.mu, mean_analized_stars) <= 1 * sigma:
             for idx in sorted(analized_stars_idx, reverse=True):
                 del stars[idx]
+                del saved_ids[idx]
 
         remaining_stars = stars[ctr:]
 
@@ -555,9 +558,7 @@ def main():
         b_u=b_u
     )
 
-    # TODO: save also star_id for any star, to make it easier to find the
-    #  plots.
-    save_stars(stars, data_file, options=args.options)
+    save_stars(stars, data_file, saved_ids, options=args.options)
 
 
 if __name__ == "__main__":

@@ -7,10 +7,13 @@ from pathlib import Path
 
 from corner import corner
 
-from pyfieldsim.core.stars import new_star
+from pyfieldsim.core.stars import new_star, Star
 
 
-plt.switch_backend('agg')
+# plt.switch_backend('agg')
+
+nlive = 500
+maxmcmc = 5000
 
 
 def dist(x1, x2):
@@ -19,6 +22,40 @@ def dist(x1, x2):
 
     d = np.sqrt(((x2 - x1) ** 2).sum())
     return d
+
+
+# def load_history(path):
+#     path = Path(path)
+#
+#     if not path.exists():
+#         return []
+#
+#     history = []
+#     with h5py.File(path, 'r') as hf:
+#         for h_line in hf.keys():
+#             hist_item = np.asarray(hf[h_line]).tolist()
+#
+#             history.append(hist_item)
+#
+#     return history
+#
+#
+# def update_history(path, history):
+#     path = Path(path)
+#
+#     with h5py.File(path, 'w') as hf:
+#         for _, hist_item in enumerate(history):
+#             item = np.atleast_2d(hist_item)
+#             if item.shape == (1, 0):
+#                 item = item.reshape((0, 2))
+#
+#             dset = hf.create_dataset(
+#                 str(_),
+#                 shape=item.shape,
+#                 dtype=int
+#             )
+#
+#             dset[0:] = item
 
 
 def make_corner_plot(
@@ -98,7 +135,7 @@ def mask_field(
         shape,
         sigma, b_u,
         is_flat,
-        force_remove=None
+        force_remove=None,
 ):
     remove_coords = np.empty(shape=(0, 2))
     if force_remove is not None:
@@ -149,7 +186,7 @@ def median_quantiles(qty, cl=1):
     odg_err = np.floor(np.log10(min_error)).astype(int)
     odg_meas = np.floor(np.log10(q_50)).astype(int)
 
-    odg = f".{odg_meas - odg_err + 1}e"
+    odg = f".{odg_meas - odg_err}e"
     fmt = f"{{0:{odg}}}".format
 
     return q_50, err_m, err_p, fmt
@@ -208,7 +245,12 @@ def plot_recovered_stars(
         x_errs = [[_] for _ in err[0]]
         y_errs = [[_] for _ in err[1]]
 
-        ax.errorbar(s.mu[0], s.mu[1],
+        if isinstance(s, Star) or show_mask:
+            c = [s.mu[0], s.mu[1]]
+        else:
+            c = [s[1], s[0]]
+
+        ax.errorbar(c[0], c[1],
                     xerr=x_errs,
                     yerr=y_errs,
                     fmt='.',
@@ -248,8 +290,8 @@ def run_mcmc(
         work = cpnest.CPNest(
             model,
             verbose=verbose,
-            nlive=1000,  # 1000
-            maxmcmc=5000,  # 5000
+            nlive=nlive,  # 1000
+            maxmcmc=maxmcmc,  # 5000
             nensemble=4,
             output=output,
         )
@@ -299,7 +341,8 @@ def _select_1_2(
                     np.median(post_1['mu_x'])
                 ],
                 sigma=sigma * np.eye(2),
-                fmts=[A_fmt, y_fmt, x_fmt]
+                fmts=[A_fmt, y_fmt, x_fmt],
+                pos_error=[mu_y_l, mu_y_u, mu_x_l, mu_x_u]
             )
         )
 
@@ -351,7 +394,8 @@ def _select_1_2(
                         np.median(post_2[f'mu_x{_}'])
                     ],
                     sigma=sigma * np.eye(2),
-                    fmts=[A_fmt, y_fmt, x_fmt]
+                    fmts=[A_fmt, y_fmt, x_fmt],
+                    pos_error=[mu_y_l, mu_y_u, mu_x_l, mu_x_u]
                 )
             )
 
@@ -396,7 +440,8 @@ def _select_s_b(
                     np.median(post_1['mu_x'])
                 ],
                 sigma=sigma * np.eye(2),
-                fmts=[A_fmt, y_fmt, x_fmt]
+                fmts=[A_fmt, y_fmt, x_fmt],
+                pos_error=[mu_y_l, mu_y_u, mu_x_l, mu_x_u]
             )
         )
 
@@ -502,8 +547,8 @@ def update_title_fmts(c, post):
 
             name_title = rf"${old_title[n_idx + 1:n_idx_end]}$ = "
             val_title = r"${{{0}}}".format(fmt(val_50))
-            err_m_title = r"_{{{0}}}".format(f"{val_m:.1e}")
-            err_p_title = r"^{{{0}}}$".format(f"{val_p:.1e}")
+            err_m_title = r"_{{{0}}}".format(f"-{val_m:.0e}")
+            err_p_title = r"^{{{0}}}$".format(f"+{val_p:.0e}")
 
             title = name_title + val_title + err_m_title + err_p_title
 

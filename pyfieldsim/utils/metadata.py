@@ -20,7 +20,8 @@ def read_metadata(sources_file):
     for k, v in metadata.items():
         if k in ['seed']:
             metadata[k] = int(v)
-        elif k in ['ext_shape', 'pad', 'shape']:
+        elif k in ['ext_shape', 'pad', 'shape',
+                   'A', 'id', 'mu_x', 'mu_y', 'pos_errors', 'sigma']:
             metadata[k] = eval(v)
         elif k.startswith('has'):
             metadata[k] = bool(v)

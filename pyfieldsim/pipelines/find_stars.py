@@ -329,25 +329,6 @@ def main():
         )
         logZ = {'s': logZ_s}
 
-        # # If the stars lies farther than 1 sigma from the brightest point,
-        # # the star hypothesis is discarted.
-        # s_brt_dist = dist(
-        #     (np.median(post_s['mu_y']), np.median(post_s['mu_x'])),
-        #     brt_coords
-        # )
-        # if s_brt_dist > sigma:
-        #     # if the found star lies farther than 1 sigma from the brightest
-        #     # pixel it may be an alias
-        #     field, valid_coords_mask = mask_field(
-        #         field,
-        #         stars=stars,
-        #         mask=valid_coords_mask,
-        #         shape=shape,
-        #         sigma=sigma, b_u=b_u,
-        #         is_flat=args.is_flat,
-        #         force_remove=valid_coords
-        #     )
-        #     continue
         if not args.is_flat:
             print("-- Testing against pure background hypothesis")
             bounds = b_bounds
@@ -370,18 +351,18 @@ def main():
 
         # If bright point (in recovery) lies farther than 2 sigma from the
         # saved mean, it means we are analyzing a different region.
-        if dist(
-                brt_coords,
-                (np.median(post_s['mu_y']), np.median(post_s['mu_x']))
-        ) >= radius:
-            logZ_b = +np.inf
-
-        for s in stars:
-            s_ = (np.median(post_s['mu_y']), np.median(post_s['mu_x']))
-            if dist((s.mu[0], s.mu[1]),
-                    s_) < sigma:
-                logZ_b = +np.inf
-                break
+        # if dist(
+        #         brt_coords,
+        #         (np.median(post_s['mu_y']), np.median(post_s['mu_x']))
+        # ) >= radius and not args.is_flat:
+        #     logZ_b = +np.inf
+        #
+        # for s in stars:
+        #     s_ = (np.median(post_s['mu_y']), np.median(post_s['mu_x']))
+        #     if dist((s.mu[0], s.mu[1]),
+        #             s_) < sigma:
+        #         logZ_b = +np.inf
+        #         break
 
         logZ['b'] = logZ_b
 
@@ -478,6 +459,9 @@ def main():
         # 9 - Iterate from 6# until background term dominates in a dataset.
         star_id += 1
 
+    save_stars(stars, data_file, saved_ids,
+               options=args.options + '_noAA')
+
     # Correlating stars between the first (fifo) and the ones within 2 sigmas
     print("- Removing aliases")
     if args.is_flat:
@@ -489,7 +473,7 @@ def main():
         psf_stars = stars[:1]
 
         analized_stars_idx = [
-            _ for _, s in enumerate(stars)
+            _+1 for _, s in enumerate(stars[1:])
             if dist(s.mu, psf_stars[0].mu) <= n_limit * sigma
         ]
     else:
@@ -512,10 +496,11 @@ def main():
         mean_analized_stars = np.mean(analized_stars, axis=0)
 
         for p in psf_stars:
-            if dist(p, mean_analized_stars) <= n_limit * sigma:
+            if dist(p, mean_analized_stars) <= sigma:
                 for idx in sorted(analized_stars_idx, reverse=True):
                     del stars[idx]
                     del saved_ids[idx]
+                    del pos_errors[idx]
                 break
 
     ctr = len(psf_stars)
@@ -534,10 +519,11 @@ def main():
             ])
             mean_analized_stars = np.mean(analized_stars, axis=0)
 
-            if dist(ref_star.mu, mean_analized_stars) <= n_limit * sigma:
+            if dist(ref_star.mu, mean_analized_stars) <= sigma:
                 for idx in sorted(analized_stars_idx, reverse=True):
                     del stars[idx]
                     del saved_ids[idx]
+                    del pos_errors[idx]
 
         remaining_stars = stars[ctr:]
 

@@ -10,7 +10,7 @@ from corner import corner
 from pyfieldsim.core.stars import new_star, Star
 
 
-# plt.switch_backend('agg')
+plt.switch_backend('agg')
 
 nlive = 500
 maxmcmc = 5000
@@ -307,7 +307,7 @@ def run_mcmc(
 
     make_corner_plot(post, name=name, out_folder=out_folder)
 
-    return post, logZ
+    return post, logZ, path
 
 
 # noinspection PyArgumentList

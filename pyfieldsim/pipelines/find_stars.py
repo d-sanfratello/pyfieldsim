@@ -5,11 +5,13 @@ import numpy as np
 import os
 
 from pathlib import Path
+from shutil import rmtree
 
 from pyfieldsim.core.fieldtypes.field import Field
 from pyfieldsim.core.stars.find_utils import (
     dist,
     mask_field,
+    median_quantiles,
     plot_recovered_stars,
     run_mcmc,
     select_hypothesis,
@@ -89,13 +91,13 @@ def main():
         bkgnd_analysis_file = Path(bkgnd_analysis_file.name
                                    + '_bkg_analysis.h5')
         bkgnd_analysis_metadata = read_metadata(bkgnd_analysis_file)
-        limit_points = 3
+        limit_points = 4
     else:
         bkgnd_analysis_metadata = {
             'mean': 0,
             'std': 1
         }
-        limit_points = 4
+        limit_points = 3
 
     data_field = Field.from_field(data_file)
 
@@ -152,8 +154,11 @@ def main():
         out_folder=plot_folder,
         verbose=2,
         force=False
-    )
+    )[:-1]
     logZ_psf = {'1': logZ_1}
+    if not args.is_flat:
+        bgnd_50, err_m, err_p = median_quantiles(post_1['b'], cl=2)[:-1]
+        bgnd_5_95 = {'1': [bgnd_50 - err_m, bgnd_50 + err_p]}
 
     # 4b - Check against two or three gaussians in the same dataset. Compare
     # evidences.
@@ -174,7 +179,7 @@ def main():
             out_folder=plot_folder,
             verbose=2,
             force=False
-        )
+        )[:-1]
 
     # If the two stars lies farther than the initial radius from each other,
     # the two stars hypothesis is discarded.
@@ -190,6 +195,10 @@ def main():
             logZ_2 = -np.inf
 
     logZ_psf['2'] = logZ_2
+    if not args.is_flat:
+        bgnd_50, err_m, err_p = median_quantiles(post_2['b'], cl=2)[:-1]
+        # noinspection PyUnboundLocalVariable
+        bgnd_5_95['2'] = [bgnd_50 - err_m, bgnd_50 + err_p]
 
     stars = []
     pos_errors = []
@@ -278,7 +287,7 @@ def main():
             brt_coords=brt_coords
         )
 
-        if valid_coords.shape[0] <= limit_points:
+        if valid_coords.shape[0] <= limit_points + 1:
             field, valid_coords_mask = mask_field(
                 field,
                 stars=stars,
@@ -302,12 +311,17 @@ def main():
         A_bounds = [
             [brt / 10, 100 * brt]
         ]
-        b_bounds = [[
-            max(
-                bkgnd_analysis_metadata['mean']
-                - 2 * bkgnd_analysis_metadata['std'], 1),
-            bkgnd_analysis_metadata['mean'] + bkgnd_analysis_metadata['std']
-        ]]
+        # b_bounds = [[
+        #     max(
+        #         bkgnd_analysis_metadata['mean']
+        #         - 2 * bkgnd_analysis_metadata['std'], 1),
+        #     bkgnd_analysis_metadata['mean'] + bkgnd_analysis_metadata['std']
+        # ]]
+        b_bounds = [
+            [0, 1]
+        ]
+        if not args.is_flat:
+            b_bounds = [bgnd_5_95[hyp_psf]]
 
         bounds = A_bounds + m_bounds + b_bounds
 
@@ -320,7 +334,7 @@ def main():
         )
 
         print("-- Testing against star hypothesis")
-        post_s, logZ_s = run_mcmc(
+        post_s, logZ_s, path_s = run_mcmc(
             model=fit_model_s,
             name=f'star_{star_id}',
             out_folder=plot_folder,
@@ -338,7 +352,7 @@ def main():
                 bounds
             )
 
-            post_b, logZ_b = run_mcmc(
+            post_b, logZ_b, path_b = run_mcmc(
                 model=fit_model_b,
                 name=f'bgnd_{star_id}',
                 out_folder=plot_folder,
@@ -394,6 +408,11 @@ def main():
 
         if hyp_s_b == 's':
             saved_ids.append(star_id)
+        elif hyp_s_b == 'b' and not args.no_force:
+            if path_s.exists():
+                rmtree(path_s, ignore_errors=True)
+            if path_b.exists():
+                rmtree(path_b, ignore_errors=True)
 
         # 8 - Remove all points within R from the mean from the dataset.
         if not args.is_flat and not np.isnan(b_u):

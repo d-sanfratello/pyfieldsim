@@ -32,6 +32,8 @@ scripts = [
     'fs-count-stars=pyfieldsim.pipelines.count_stars:main',
     'fs-eval-background=pyfieldsim.pipelines.find_background:main',
     'fs-find-stars=pyfieldsim.pipelines.find_stars:main',
+    'fs-export-stars=pyfieldsim.pipelines.export_stars:main',
+    'fs-anti-alias=pyfieldsim.pipelines.anti_alias:main',
     'fs-plot=pyfieldsim.pipelines.plot:main',
     'fs-show-meta=pyfieldsim.pipelines.read_metadata:main',
 ]
@@ -45,6 +47,8 @@ pymodules = [
     'pyfieldsim/pipelines/count_stars',
     'pyfieldsim/pipelines/find_background',
     'pyfieldsim/pipelines/find_stars',
+    'pyfieldsim/pipelines/export_stars',
+    'pyfieldsim/pypelines/anti_alias',
     'pyfieldsim/pipelines/plot',
     'pyfieldsim/pipelines/read_metadata',
 ]

@@ -38,6 +38,9 @@ def main():
     parser.add_argument("--fs-find-stars", action='store_true',
                         help="finds the stars in a field, assuming a "
                              "psf-convoluted field.")
+    parser.add_argument("--fs-export-stars", action='store_true',
+                        help="export the stars inferred in the samplings "
+                             "folder to a separate file.")
     parser.add_argument("--fs-plot", action='store_true',
                         help="shows the plot of a field.")
     parser.add_argument("--fs-show-meta", action='store_true',

@@ -49,7 +49,8 @@ def main():
             'N stars': n_stars
         }
         for _, idx in enumerate(ids):
-            metadata[f's_{idx}'] = f'({mu_x[_]}, {mu_y[_]})\tA = {A[_]:1.3e}'
+            metadata[f's_{idx}'] = f'({mu_x[_]}, {mu_y[_]})'.ljust(20) \
+                                   + f'A = {A[_]}'
     else:
         print(f'Metadata for file {data_file.name}')
         metadata = read_metadata(data_file)

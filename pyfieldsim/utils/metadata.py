@@ -21,10 +21,13 @@ def read_metadata(sources_file):
         if k in ['seed']:
             metadata[k] = int(v)
         elif k in ['ext_shape', 'pad', 'shape',
-                   'A', 'id', 'mu_x', 'mu_y', 'pos_errors', 'sigma']:
+                   'A', 'id', 'mu_x', 'mu_y', 'pos_errors', 'sigma',
+                   'A_errors']:
             metadata[k] = eval(v)
         elif k.startswith('has'):
             metadata[k] = bool(v)
+        elif k == 'hyp_psf':
+            metadata[k] = v
         else:
             metadata[k] = float(v)
 

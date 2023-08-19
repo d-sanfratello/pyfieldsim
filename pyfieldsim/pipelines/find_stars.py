@@ -25,7 +25,7 @@ from pyfieldsim.utils.metadata import read_metadata
 from pyfieldsim.utils.save_stars import save_stars
 
 
-# noinspection PyArgumentList
+# noinspection PyArgumentList,PyUnboundLocalVariable
 def main():
     parser = ag.ArgumentParser(
         prog='fs-find-stars',
@@ -184,10 +184,15 @@ def main():
     # If the two stars lies farther than the initial radius from each other,
     # the two stars hypothesis is discarded.
     try:
-        s0_s1_dist = dist(
-            (coords[0][1], coords[0][0]),
-            (coords[1][1], coords[1][0])
+        median_0 = (
+            np.median(post_2['mu_x0']),
+            np.median(post_2['mu_y0'])
         )
+        median_1 = (
+            np.median(post_2['mu_x1']),
+            np.median(post_2['mu_y1'])
+        )
+        s0_s1_dist = dist(median_0, median_1)
     except IndexError:
         pass
     else:
@@ -436,7 +441,7 @@ def main():
                 is_flat=args.is_flat,
                 sources=coords,
                 brt_coords=brt_coords,
-                radius=initial_radius,
+                radius=radius,
                 show_mask=True,
                 masked_field=field,
                 sigma=sigma,
@@ -464,7 +469,7 @@ def main():
                 is_flat=args.is_flat,
                 sources=coords,
                 brt_coords=brt_coords,
-                radius=initial_radius,
+                radius=radius,
                 show_mask=True,
                 masked_field=field,
                 sigma=sigma,
@@ -478,8 +483,12 @@ def main():
         # 9 - Iterate from 6# until background term dominates in a dataset.
         star_id += 1
 
-    save_stars(stars, data_file, saved_ids,
-               options=args.options + '_noAA')
+    if args.options is not None:
+        options = args.options
+    else:
+        options = ''
+    save_stars(stars, data_file, saved_ids, hyp_psf,
+               options=options)
 
     # Correlating stars between the first (fifo) and the ones within 2 sigmas
     print("- Removing aliases")
@@ -573,7 +582,7 @@ def main():
         b_u=b_u
     )
 
-    save_stars(stars, data_file, saved_ids, options=args.options)
+    save_stars(stars, data_file, saved_ids, hyp_psf, options=args.options)
 
 
 if __name__ == "__main__":

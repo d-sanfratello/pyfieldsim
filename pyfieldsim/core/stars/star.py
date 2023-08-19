@@ -6,7 +6,7 @@ from .point_star import PointStar
 
 
 class Star(PointStar):
-    def __init__(self, A, mu, sigma, fmts=None, pos_error=None):
+    def __init__(self, A, mu, sigma, fmts=None, pos_error=None, A_error=None):
         super(Star, self).__init__(A, mu)
 
         self.sigma = sigma
@@ -20,6 +20,7 @@ class Star(PointStar):
             [pos_error[0], pos_error[1]],
             [pos_error[2], pos_error[3]]
         ]
+        self.__A_error = A_error
 
     def __call__(self, x):
         return self.A * mvn.pdf(x)
@@ -40,6 +41,10 @@ class Star(PointStar):
     def pos_error(self):
         return self.__pos_error
 
+    @property
+    def A_error(self):
+        return self.__A_error
 
-def new_star(A, mu, sigma, fmts=None, pos_error=None):
-    return Star(A, mu, sigma, fmts=fmts, pos_error=pos_error)
+
+def new_star(A, mu, sigma, fmts=None, pos_error=None, A_error=None):
+    return Star(A, mu, sigma, fmts=fmts, pos_error=pos_error, A_error=A_error)

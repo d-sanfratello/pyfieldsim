@@ -342,7 +342,8 @@ def _select_1_2(
                 ],
                 sigma=sigma * np.eye(2),
                 fmts=[A_fmt, y_fmt, x_fmt],
-                pos_error=[mu_y_l, mu_y_u, mu_x_l, mu_x_u]
+                pos_error=[mu_y_l, mu_y_u, mu_x_l, mu_x_u],
+                A_error=[A_l, A_u]
             )
         )
 
@@ -395,7 +396,8 @@ def _select_1_2(
                     ],
                     sigma=sigma * np.eye(2),
                     fmts=[A_fmt, y_fmt, x_fmt],
-                    pos_error=[mu_y_l, mu_y_u, mu_x_l, mu_x_u]
+                    pos_error=[mu_y_l, mu_y_u, mu_x_l, mu_x_u],
+                    A_error=[A_l, A_u]
                 )
             )
 
@@ -441,7 +443,8 @@ def _select_s_b(
                 ],
                 sigma=sigma * np.eye(2),
                 fmts=[A_fmt, y_fmt, x_fmt],
-                pos_error=[mu_y_l, mu_y_u, mu_x_l, mu_x_u]
+                pos_error=[mu_y_l, mu_y_u, mu_x_l, mu_x_u],
+                A_error=[A_l, A_u]
             )
         )
 

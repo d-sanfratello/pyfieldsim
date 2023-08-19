@@ -55,7 +55,7 @@ def main():
     if not args.no_log:
         plot_field = np.log10(plot_field)
 
-    img = ax.imshow(plot_field, origin='upper', cmap='Greys')
+    img = ax.imshow(plot_field, origin='lower', cmap='Greys')
     plt.colorbar(img)
 
     if args.crop and not data_file.stem.startswith('O'):

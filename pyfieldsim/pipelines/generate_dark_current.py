@@ -3,7 +3,10 @@ import os
 
 from pathlib import Path
 
-from pyfieldsim.core.fieldtypes.sensor import create_dark_current
+from pyfieldsim.core.fieldtypes.sensor import (
+    create_dark_current,
+    create_bad_pixels
+)
 
 
 def main():
@@ -15,6 +18,9 @@ def main():
     parser.add_argument('-b', '--background_fraction', type=float,
                         dest='bgnd_fraction', default=0.1,
                         help='')
+    parser.add_argument('-t', '--delta-time', type=float,
+                        dest='delta_time', default=1,
+                        help="")
     parser.add_argument("-o", "--output",
                         dest='out_folder', default=None,
                         help="")
@@ -30,6 +36,12 @@ def main():
     dark_current = create_dark_current(
         sources_file,
         b_fraction=args.bgnd_fraction,
+        delta_time=args.delta_time
+    )
+
+    dark_current = create_bad_pixels(
+        sources_file,
+        dark_current
     )
 
     filename = 'C' + sources_file.name[1:]

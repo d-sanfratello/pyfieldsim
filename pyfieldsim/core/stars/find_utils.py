@@ -212,10 +212,11 @@ def plot_recovered_stars(
 
     fig, ax = plt.subplots()
     if show_mask:
-        ax.imshow(field, cmap='GnBu', origin='upper')
-        ax.imshow(masked_field, alpha=1, cmap='Greys', origin='upper')
+        ax.imshow(field, cmap='GnBu', origin='upper', interpolation='none')
+        ax.imshow(masked_field, alpha=1, cmap='Greys', origin='upper',
+                  interpolation='none')
     else:
-        ax.imshow(field, cmap='Greys', origin='upper')
+        ax.imshow(field, cmap='Greys', origin='upper', interpolation='none')
 
     ax.set_aspect(1)
 

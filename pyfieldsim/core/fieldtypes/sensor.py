@@ -43,7 +43,8 @@ def create_gain_map(sources_file, mean_gain, rel_var):
 
 
 def create_dark_current(sources_file,
-                        b_fraction=0.1):
+                        b_fraction=0.1,
+                        delta_time=1):
     sources_file = Path(sources_file)
     background_filename = 'B' + sources_file.name[1:]
     background_file = Field.from_field(background_filename)
@@ -53,7 +54,7 @@ def create_dark_current(sources_file,
     rng = np.random.default_rng(seed=sim_meta['seed'])
 
     b_mean = np.mean(background_file.field)
-    dk_c_mean = b_mean * b_fraction
+    dk_c_mean = b_mean * b_fraction * delta_time
 
     # Generating the dark current field for the simulated CCD.
     dk_c_field = rng.poisson(
@@ -81,3 +82,20 @@ def create_dark_current(sources_file,
         gain_map_file=None,
         dk_c_file=None
     )
+
+
+def create_bad_pixels(sources_file, dc_field):
+    sim_meta = read_metadata(sources_file)
+    rng = np.random.default_rng(seed=sim_meta['seed'])
+    shape = dc_field.field.shape
+
+    n_bad_pixels = rng.integers(low=0, high=shape[0]*shape[1] // 500,
+                                endpoint=False)
+
+    idx_bad_pixels = rng.integers(low=0, high=shape[0]*shape[1],
+                                  endpoint=False, size=n_bad_pixels)
+    coords_bad_pixels = np.unravel_index(idx_bad_pixels, shape=shape)
+
+    dc_field.field[coords_bad_pixels] *= 10
+
+    return dc_field

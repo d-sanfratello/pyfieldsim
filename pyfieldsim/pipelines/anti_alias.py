@@ -105,7 +105,7 @@ def main():
         else:
             # If there's a single star and it's within one sigma, it's assumed
             # to be an alias. Otherwise it is considered a plausible star.
-            # TODO: test
+            # TODO: test if 1 sigma or 1 px (sqrt(0.5))
             if dist(ref_star.mu, analized_stars[0], axis=0) <= sigma:
                 idx = analized_stars_idx[0]
 

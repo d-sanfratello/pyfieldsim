@@ -44,6 +44,9 @@ def main():
     parser.add_argument("-o", "--output",
                         dest='out_folder', default=None,
                         help="")
+    parser.add_argument("--padding", type=int,
+                        dest='padding', default=0,
+                        help="")
     parser.add_argument("--no-force", action='store_false',
                         dest='no_force', default=True,
                         help="")
@@ -283,6 +286,21 @@ def main():
             continue
 
         brt_coords = np.unravel_index(np.argmax(field), shape)
+        if np.any(brt_coords < args.padding*np.ones(2)) \
+                or np.any(
+            brt_coords >= np.array(shape) - args.padding*np.ones(2)
+        ):
+            field, valid_coords_mask = mask_field(
+                field,
+                stars=stars,
+                mask=valid_coords_mask,
+                shape=shape,
+                sigma=sigma, b_u=b_u,
+                is_flat=args.is_flat,
+                force_remove=np.asarray([brt_coords])
+            )
+            print("-- Bright point within padding")
+            continue
 
         radius = 2 * sigma
         valid_coords, valid_counts = select_valid_pixels(
@@ -338,7 +356,7 @@ def main():
             is_flat=args.is_flat
         )
 
-        print("-- Testing against star hypothesis")
+        print("-- Testing star hypothesis")
         post_s, logZ_s, path_s = run_mcmc(
             model=fit_model_s,
             name=f'star_{star_id}',
@@ -349,7 +367,7 @@ def main():
         logZ = {'s': logZ_s}
 
         if not args.is_flat:
-            print("-- Testing against pure background hypothesis")
+            print("-- Testing pure background hypothesis")
             bounds = b_bounds
             fit_model_b = FindBackground(
                 valid_coords, valid_counts,
@@ -398,20 +416,21 @@ def main():
             sigma=sigma
         )
 
-        plot_recovered_stars(
-            data_field.field,
-            stars=stars,
-            pos_errors=pos_errors,
-            shape=shape,
-            show_sources=args.show_sources,
-            is_flat=args.is_flat,
-            sources=coords,
-            brt_coords=brt_coords,
-            radius=radius,
-            out_path=plot_folder.joinpath(f'recovered_{star_id}.pdf')
-        )
-
         if hyp_s_b == 's':
+            plot_recovered_stars(
+                data_field.field,
+                stars=stars,
+                pos_errors=pos_errors,
+                shape=shape,
+                show_sources=args.show_sources,
+                is_flat=args.is_flat,
+                sources=coords,
+                brt_coords=brt_coords,
+                radius=radius,
+                out_path=plot_folder.joinpath(f'recovered_{star_id}.pdf'),
+                forced=(not args.no_force)
+            )
+
             saved_ids.append(star_id)
         elif hyp_s_b == 'b' and not args.no_force:
             if path_s.exists():
@@ -430,23 +449,25 @@ def main():
                 is_flat=args.is_flat
             )
 
-            plot_recovered_stars(
-                data_field.field,
-                stars=stars,
-                pos_errors=pos_errors,
-                shape=shape,
-                out_path=plot_folder.joinpath(f'removed_pixels_star'
-                                              f'{star_id}.pdf'),
-                show_sources=True,
-                is_flat=args.is_flat,
-                sources=coords,
-                brt_coords=brt_coords,
-                radius=radius,
-                show_mask=True,
-                masked_field=field,
-                sigma=sigma,
-                b_u=b_u
-            )
+            if hyp_s_b == 's':
+                plot_recovered_stars(
+                    data_field.field,
+                    stars=stars,
+                    pos_errors=pos_errors,
+                    shape=shape,
+                    out_path=plot_folder.joinpath(f'removed_pixels_star'
+                                                  f'{star_id}.pdf'),
+                    show_sources=True,
+                    is_flat=args.is_flat,
+                    sources=coords,
+                    brt_coords=brt_coords,
+                    radius=radius,
+                    show_mask=True,
+                    masked_field=field,
+                    sigma=sigma,
+                    b_u=b_u,
+                    forced=(not args.no_force)
+                )
         elif args.is_flat or np.isnan(b_u):
             field, valid_coords_mask = mask_field(
                 field,
@@ -473,7 +494,8 @@ def main():
                 show_mask=True,
                 masked_field=field,
                 sigma=sigma,
-                b_u=b_u
+                b_u=b_u,
+                forced=(not args.no_force)
             )
 
             if args.is_flat and hyp_s_b == 's':

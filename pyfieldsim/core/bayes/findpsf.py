@@ -72,6 +72,11 @@ class FindPsf(Model):
         )
         c_hat = star_cts + b
 
-        likel = poisson.logpmf(self.c, c_hat)
+        if self.c.dtype == int:
+            likel = poisson.logpmf(self.c, c_hat)
+        else:
+            likel = norm.logpdf(self.c,
+                                loc=c_hat,
+                                scale=np.sqrt(c_hat))
 
         return likel.sum()

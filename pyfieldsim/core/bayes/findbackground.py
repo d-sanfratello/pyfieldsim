@@ -32,6 +32,11 @@ class FindBackground(Model):
         b = param['b']
 
         c_hat = b * np.ones(shape=self.c.shape)
-        likel = poisson.logpmf(self.c, c_hat)
+        if self.c.dtype == int:
+            likel = poisson.logpmf(self.c, c_hat)
+        else:
+            likel = norm.logpdf(self.c,
+                                loc=c_hat,
+                                scale=np.sqrt(c_hat))
 
         return likel.sum()

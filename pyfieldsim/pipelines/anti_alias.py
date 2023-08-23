@@ -14,8 +14,6 @@ from pyfieldsim.core.fieldtypes.field import Field
 from pyfieldsim.utils.metadata import read_metadata
 from pyfieldsim.utils.save_stars import load_stars, save_stars
 
-# TODO: Add plot
-
 
 # noinspection PyArgumentList,PyUnboundLocalVariable,PyTypeChecker
 def main():
@@ -92,10 +90,11 @@ def main():
             _ + ctr for _, s in enumerate(stars[ctr:])
             if dist(s.mu, ref_star.mu) <= n_limit * sigma
         ]
+        analized_stars = np.array([
+            stars[_].mu for _ in analized_stars_idx
+        ])
+
         if len(analized_stars_idx) > 1:
-            analized_stars = np.array([
-                stars[_].mu for _ in analized_stars_idx
-            ])
             mean_analized_stars = np.mean(analized_stars, axis=0)
 
             if dist(ref_star.mu, mean_analized_stars) <= sigma:
@@ -103,6 +102,16 @@ def main():
                     del stars[idx]
                     del saved_ids[idx]
                     del pos_errors[idx]
+        else:
+            # If there's a single star and it's within one sigma, it's assumed
+            # to be an alias. Otherwise it is considered a plausible star.
+            # TODO: test
+            if dist(ref_star.mu, analized_stars[0], axis=0) <= sigma:
+                idx = analized_stars_idx[0]
+
+                del stars[idx]
+                del saved_ids[idx]
+                del pos_errors[idx]
 
         remaining_stars = stars[ctr:]
 

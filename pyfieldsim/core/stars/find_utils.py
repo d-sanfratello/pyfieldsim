@@ -206,18 +206,21 @@ def plot_recovered_stars(
         show_mask=False,
         masked_field=None,
         sigma=None,
-        b_u=None
+        b_u=None,
+        forced=False
 ):
     out_path = Path(out_path)
 
     fig, ax = plt.subplots()
     if show_mask:
         ax.imshow(field, cmap='GnBu', origin='upper', interpolation='none')
-        ax.imshow(masked_field, alpha=1, cmap='Greys', origin='upper',
-                  interpolation='none')
+        img = ax.imshow(masked_field, alpha=1, cmap='Greys', origin='upper',
+                        interpolation='none')
     else:
-        ax.imshow(field, cmap='Greys', origin='upper', interpolation='none')
+        img = ax.imshow(field, cmap='Greys', origin='upper',
+                        interpolation='none')
 
+    plt.colorbar(img)
     ax.set_aspect(1)
 
     if show_sources:
@@ -231,6 +234,16 @@ def plot_recovered_stars(
             ax.add_artist(good_px)
 
             if _ == 0 and radius is not None:
+                if forced:
+                    valid, counts = select_valid_pixels(
+                        field,
+                        radius=radius,
+                        shape=shape,
+                        brt_coords=(stars[-1].mu[1], stars[-1].mu[0])
+                    )
+                    brt_index = np.argmax(counts)
+                    brt_coords = valid[brt_index]
+
                 circle = plt.Circle(
                     (brt_coords[1], brt_coords[0]),
                     radius=radius,

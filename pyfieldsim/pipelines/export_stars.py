@@ -161,9 +161,15 @@ def main():
     else:
         options = [args.options, 'noAA']
 
-    data_field_path = main_folder.glob('O*.h5')
+    data_field_path = main_folder.glob('L*.h5')
     data_field_path = [p for p in data_field_path
-                       if p.name.find('meta') < 0][0]
+                       if p.name.find('meta') < 0]
+    if len(data_field_path) == 0:
+        data_field_path = main_folder.glob('O*.h5')
+        data_field_path = [p for p in data_field_path
+                           if p.name.find('meta') < 0]
+
+    data_field_path = data_field_path[0]
 
     sources_file = Path('S' + data_field_path.name[1:])
     sources_metadata = read_metadata(sources_file)

@@ -58,7 +58,8 @@ def main():
     img = ax.imshow(plot_field, origin='lower', cmap='Greys')
     plt.colorbar(img)
 
-    if args.crop and not data_file.stem.startswith('O'):
+    if args.crop and not (data_file.stem.startswith('O') or
+                          data_file.stem.startswith('L')):
         pad = metadata['pad']
         ext_shape = metadata['ext_shape']
 

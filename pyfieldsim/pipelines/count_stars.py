@@ -8,7 +8,7 @@ from pathlib import Path
 from pyfieldsim.core.fieldtypes.field import Field
 from pyfieldsim.core.stars import new_point_star
 from pyfieldsim.utils.metadata import read_metadata
-from pyfieldsim.utils.save_stars import save_stars
+from pyfieldsim.utils.save_stars import save_point_stars
 
 from pyfieldsim.errors.exceptions import WrongDataFileError
 
@@ -100,10 +100,9 @@ def main():
         ax.set_xscale('log')
         ax.set_yscale('log')
 
-    save_stars(stars, data_file, options='countS')
+    save_point_stars(stars, data_file, options='countS')
 
     fig.savefig(out_folder.joinpath("hist.pdf"))
-    plt.show()
 
 
 def find_stars(ext_field, metadata):

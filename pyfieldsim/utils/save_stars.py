@@ -6,6 +6,36 @@ from .metadata import save_metadata, read_metadata
 from pyfieldsim.core.stars.star import new_star
 
 
+def save_point_stars(stars, data_file, options=None):
+    stars = np.asarray(stars)
+    n_stars = stars.shape[0]
+
+    output = Path('R' + data_file.stem[1:]).with_suffix('.h5')
+    suffix = output.suffix
+    if options is not None:
+        output = Path(output.stem + f"_{''.join(options)}").with_suffix(suffix)
+
+    mu_x = np.zeros(n_stars, dtype=float)
+    mu_y = np.zeros(n_stars, dtype=float)
+    A = np.zeros(n_stars, dtype=float)
+
+    for _, s in enumerate(stars):
+        mu_x[_] = s.mu[0]
+        mu_y[_] = s.mu[1]
+
+        A[_] = s.A
+
+    metadata = {
+        'n_stars': n_stars,
+        'mu_x': mu_x.tolist(),
+        'mu_y': mu_y.tolist(),
+        'A': A.tolist(),
+        'id': np.linspace(1, n_stars, n_stars, dtype=int),
+    }
+
+    save_metadata(metadata, output)
+
+
 def save_stars(stars, data_file, saved_ids, hyp_psf, options=None):
     stars = np.asarray(stars)
     n_stars = stars.shape[0]

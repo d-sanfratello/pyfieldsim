@@ -102,11 +102,11 @@ def main():
                     del stars[idx]
                     del saved_ids[idx]
                     del pos_errors[idx]
-        else:
+        elif len(analized_stars_idx) > 0:
             # If there's a single star and it's within one sigma, it's assumed
             # to be an alias. Otherwise it is considered a plausible star.
             # TODO: test if 1 sigma or 1 px (sqrt(0.5))
-            if dist(ref_star.mu, analized_stars[0], axis=0) <= sigma:
+            if dist(ref_star.mu, analized_stars[0]) <= sigma:
                 idx = analized_stars_idx[0]
 
                 del stars[idx]
@@ -120,9 +120,15 @@ def main():
     else:
         options = [args.options, 'AA']
 
-    data_field_path = main_folder.glob('O*.h5')
+    data_field_path = main_folder.glob('L*.h5')
     data_field_path = [p for p in data_field_path
-                       if p.name.find('meta') < 0][0]
+                       if p.name.find('meta') < 0]
+    if len(data_field_path) == 0:
+        data_field_path = main_folder.glob('O*.h5')
+        data_field_path = [p for p in data_field_path
+                           if p.name.find('meta') < 0]
+
+    data_field_path = data_field_path[0]
 
     sources_file = Path('S' + data_field_path.name[1:])
     sources_metadata = read_metadata(sources_file)

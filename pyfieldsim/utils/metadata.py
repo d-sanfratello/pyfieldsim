@@ -6,11 +6,13 @@ from pathlib import Path
 def read_metadata(sources_file):
     filename = Path(sources_file).with_suffix('')
     if not filename.name.endswith('_meta'):
-        filename = Path(
+        filename = filename.parent.joinpath(
             filename.name + '_meta.h5'
         )
     else:
-        filename = Path(filename.name + '.h5')
+        filename = filename.parent.joinpath(
+            filename.name + '.h5'
+        )
 
     with h5py.File(filename, 'r') as f:
         metadata = {

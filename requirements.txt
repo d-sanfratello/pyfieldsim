@@ -3,4 +3,4 @@ matplotlib~=3.5.3
 numpy~=1.21.5
 h5py~=3.1.0
 scipy~=1.7.3
-scikit-image
+scikit-image~=0.19.3

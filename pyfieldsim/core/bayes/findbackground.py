@@ -35,6 +35,8 @@ class FindBackground(Model):
         if self.c.dtype == int:
             likel = poisson.logpmf(self.c, c_hat)
         else:
+            # If there is a continuous variable, like after the RL
+            # deconvolution.
             likel = norm.logpdf(self.c,
                                 loc=c_hat,
                                 scale=np.sqrt(c_hat))

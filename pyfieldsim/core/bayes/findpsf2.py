@@ -58,6 +58,7 @@ class FindPsf2(Model):
         mu_y1 = param['mu_y1']
         sigma = param['sigma']
 
+        # Expected counts for brighter and fainter star, flat case
         stars_0_cts = A0 * norm.pdf(
             self.coords[:, 0], loc=mu_x0, scale=sigma
         ) * norm.pdf(
@@ -84,6 +85,7 @@ class FindPsf2(Model):
         sigma = param['sigma']
         b = param['b']
 
+        # Expected counts for brighter and fainter star, background case
         stars_0_cts = A0 * norm.pdf(
             self.coords[:, 0], loc=mu_x0, scale=sigma
         ) * norm.pdf(

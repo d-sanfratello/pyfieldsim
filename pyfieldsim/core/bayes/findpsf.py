@@ -39,6 +39,8 @@ class FindPsf(Model):
         return log_p
 
     def __log_l_flat(self, param):
+        # likelihood for the flat case, without any background.
+
         A = param['A']
         mu_x = param['mu_x']
         mu_y = param['mu_y']
@@ -57,12 +59,15 @@ class FindPsf(Model):
         return likel.sum()
 
     def __log_l_bgnd(self, param):
+        # likelihood for the background case.
+
         A = param['A']
         mu_x = param['mu_x']
         mu_y = param['mu_y']
         sigma = param['sigma']
         b = param['b']
 
+        # expected counts from a single star
         star_cts = A * norm.pdf(
             self.coords[:, 0],
             loc=mu_x, scale=sigma
@@ -75,6 +80,7 @@ class FindPsf(Model):
         if self.c.dtype == int:
             likel = poisson.logpmf(self.c, c_hat)
         else:
+            # for continuous variables, like after RL deconvolution
             likel = norm.logpdf(self.c,
                                 loc=c_hat,
                                 scale=np.sqrt(c_hat))

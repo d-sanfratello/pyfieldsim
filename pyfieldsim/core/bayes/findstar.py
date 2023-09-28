@@ -45,6 +45,7 @@ class FindStar(Model):
         mu_x = param['mu_x']
         mu_y = param['mu_y']
 
+        # Expected counts for a single star, flat case
         star_cts = A * norm.pdf(
             self.coords[:, 0], loc=mu_x, scale=self.sigma
         ) * norm.pdf(
@@ -61,6 +62,7 @@ class FindStar(Model):
         mu_y = param['mu_y']
         b = param['b']
 
+        # Expected counts for a single star, background case
         star_cts = A * norm.pdf(
             self.coords[:, 0], loc=mu_x, scale=self.sigma
         ) * norm.pdf(
@@ -71,6 +73,7 @@ class FindStar(Model):
         if self.c.dtype == int:
             likel = poisson.logpmf(self.c, c_hat)
         else:
+            # likelihood for continuous variable, like after RL deconvolution
             likel = norm.logpdf(self.c,
                                 loc=c_hat,
                                 scale=np.sqrt(c_hat))

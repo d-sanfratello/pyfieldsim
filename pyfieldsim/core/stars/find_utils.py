@@ -17,6 +17,9 @@ maxmcmc = 5000
 
 
 def dist(x1, x2):
+    """
+    Function to determine the distance between two stars.
+    """
     x1 = np.asarray(x1)
     x2 = np.asarray(x2)
 
@@ -24,43 +27,12 @@ def dist(x1, x2):
     return d
 
 
-# def load_history(path):
-#     path = Path(path)
-#
-#     if not path.exists():
-#         return []
-#
-#     history = []
-#     with h5py.File(path, 'r') as hf:
-#         for h_line in hf.keys():
-#             hist_item = np.asarray(hf[h_line]).tolist()
-#
-#             history.append(hist_item)
-#
-#     return history
-#
-#
-# def update_history(path, history):
-#     path = Path(path)
-#
-#     with h5py.File(path, 'w') as hf:
-#         for _, hist_item in enumerate(history):
-#             item = np.atleast_2d(hist_item)
-#             if item.shape == (1, 0):
-#                 item = item.reshape((0, 2))
-#
-#             dset = hf.create_dataset(
-#                 str(_),
-#                 shape=item.shape,
-#                 dtype=int
-#             )
-#
-#             dset[0:] = item
-
-
 def make_corner_plot(
         post, *, name, out_folder
 ):
+    """
+    Function to create a corner plot from a posterior distribution and saves it.
+    """
     columns = [
         post[par] for par in post.dtype.names
         if par not in ['logL', 'logPrior']
@@ -115,6 +87,16 @@ def _find_R(
         A, sigma, b_u,
         is_flat
 ):
+    """
+    Function to find the radius within which all pixels around a newly found
+    star are masked. Depends on an upper limit on background set by the used.
+
+    If the field is flat (contains no background) this function returns the
+    width of the PSF, otherwise the smaller between the calculated radius
+    and twice the PSF width.
+
+    See the report for further information.
+    """
     if is_flat:
         return sigma
 
@@ -137,11 +119,44 @@ def mask_field(
         is_flat,
         force_remove=None,
 ):
+    """
+    Function that masks the field for the next iteration of star
+    identification.
+
+    Parameters
+    ----------
+    field: `numpy.array` or `numpy.ma.masked_array`
+        Containing the field to mask.
+    stars: iterable of `Star` objects.
+        The stars to be masked in the field at the current iteration.
+    mask: `numpy.array` of the same shape of 'field'.
+        The previous mask to be applied to the field.
+    shape: `tuple`
+        The shape of the field you are working on.
+    sigma: `number`
+        The width of the PSF on the field.
+    b_u: `number`
+        The upper level of background for a given star below which the star
+        is removed.
+    is_flat: `bool`
+        A flag to identify a flat field
+    force_remove: `iterable` or 'None'. Default is 'None'
+        If passed, this function removes the given pixels from the field.
+
+    Returns
+    -------
+    field: `numpy.ma.masked_array`
+        The masked field.
+    mask: `numpy.ndarray`
+        The mask for the field.
+    """
     remove_coords = np.empty(shape=(0, 2))
     if force_remove is not None:
         remove_coords = force_remove
     else:
         for s in stars:
+            # loops through the newly identified stars to remove them. First
+            # it finds the radius of pixels to be removed.
             R = _find_R(A=s.A, sigma=sigma, b_u=b_u, is_flat=is_flat)
 
             _remove_coords = [
@@ -156,6 +171,7 @@ def mask_field(
 
             remove_coords = np.vstack((remove_coords, _remove_coords))
 
+    # The passed mask is updated with the newly removed pixels.
     remove_coords = remove_coords.astype(int)
     for c in remove_coords:
         mask[c[0], c[1]] = True
@@ -169,6 +185,36 @@ def mask_field(
 
 
 def median_quantiles(qty, cl=1):
+    """
+    Function to determine the median of a quantity from its posterior
+    distribution and the lower and upper confidence level depending on a
+    'sigma-like' value of 1, 2 or 3.
+
+    Parameters
+    ----------
+    qty: `iterable`
+        Containing the posterior extractions of the quantity we want to find
+        the median of.
+    cl: '1', '2' or '3'. Default is '1'
+        The confidence interval to return. 'cl=1' corresponds to the 16-84%
+        interval, 'cl=2' to the '5-95%' interval and 'cl=3' to the '1-99%'
+        interval.
+
+    Returns
+    -------
+    q_50
+        The median of the sample.
+    err_m, err_p
+        The errorbars for the lower and upper interval, respectively.
+    fmt
+        The format function to write the errorbars with the correct number
+        of significant digits.
+
+    Raises
+    ------
+    ValueError
+        If 'cl' is different from '1', '2' or '3'.
+    """
     if cl == 1:
         qtls = [0.16, 0.84]
     elif cl == 2:
@@ -209,6 +255,7 @@ def plot_recovered_stars(
         b_u=None,
         forced=False
 ):
+    # TODO: from here
     out_path = Path(out_path)
 
     fig, ax = plt.subplots()

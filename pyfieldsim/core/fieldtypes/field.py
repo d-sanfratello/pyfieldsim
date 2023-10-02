@@ -9,6 +9,23 @@ from pyfieldsim.utils.metadata import read_metadata
 class Field:
     @classmethod
     def from_sources(cls, sources_file, datatype='mass'):
+        """
+        Class method that creates a Field object from a sources' file.
+
+        Parameters
+        ----------
+        sources_file: `string` or `Path`
+            path to the file containing the sources.
+
+        datatype: `string`
+            type of data to be extracted, wether ``mass``, ``luminosity`` or
+            ``magnitude``.
+
+        Returns
+        -------
+        Field object
+            a Field object containing the sources from the file.
+        """
         sources_file = Path(sources_file).with_suffix('.h5')
 
         with h5py.File(sources_file, 'r') as f:
@@ -27,6 +44,19 @@ class Field:
 
     @classmethod
     def from_field(cls, field_file):
+        """
+        Class method that creates a Field object from a field file.
+
+        Parameters
+        ----------
+        field_file: `string` or `Path`
+            path to the file containing the existing field.
+
+        Returns
+        -------
+        Field object
+            a Field object containing the saved field from the file.
+        """
         field_file = Path(field_file).with_suffix('.h5')
 
         with h5py.File(field_file, 'r') as f:
@@ -55,6 +85,14 @@ class Field:
             setattr(self, f'_{k}', locals()[k])
 
     def export_field(self, filename):
+        """
+        Method that exports the Field into an HDF5 file, for later analysis.
+
+        Parameters
+        ----------
+        filename: `string` of `Path`
+            The name of the destination file.
+        """
         filename = Path(filename)
         if filename.suffixes[-1].lower() != '.h5':
             filename = filename.with_suffix('.h5')
@@ -72,6 +110,9 @@ class Field:
                 file.attrs[k] = str(v)
 
     def __mul__(self, other):
+        """
+        Multiplication of two Field instances.
+        """
         if isinstance(other, Field):
             new_field = other.field * self.field
         else:
@@ -80,6 +121,9 @@ class Field:
         return new_field
 
     def __add__(self, other):
+        """
+        Sum of two Field instances.
+        """
         new_field = self.field + other.field
 
         return new_field

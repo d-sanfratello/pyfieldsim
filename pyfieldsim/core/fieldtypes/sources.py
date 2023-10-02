@@ -119,17 +119,6 @@ class Sources:
             If of type `int`, passes the seed to the pseudo-random number
             generator of numpy. If `None`, numpy generates a seed by itself.
             Default is `None`.
-
-        Raises
-        ------
-        `TypeError`:
-            If `datatype` is not a string or if `force` is not a `bool` or if
-            `seed` is not an `int` or `None`.
-        `ValueError`:
-            If `datatype` is not `'luminosity'`, `'mass'` or `'magnitude'`.
-        `FieldAlreadyInitializedWarning`:
-            If the field has been previously initialized. Execution is not
-            halted, but the field is not updated.
         """
         if e_imf <= 1:
             raise ValueError("IMF exponent cannot be smaller or equal to 1.")
@@ -195,8 +184,7 @@ class Sources:
         Raises
         ------
         `ValueError`:
-            If `cimf` is not in the iterval [0, 1] or if `e` is less or
-            equal to 1.
+            If `cimf` is not in the iterval [0, 1].
         """
         if not np.all((0 <= cimf) & (cimf <= 1)):
             raise ValueError("`cimf` value is outside of interval [0, 1].")
@@ -223,13 +211,6 @@ class Sources:
         -------
         Luminosity: `number`
             Returns the luminosity of the star.
-
-        Raises
-        ------
-        `ValueError`:
-            If `e` is less or equal to 0 or if `cst` is less or equal to 0.
-        `AttributeError`:
-            If instance's mass has not been generated, yet.
         """
         return self.__cst_lm * self.mass ** self.__e_lm
 
@@ -246,15 +227,18 @@ class Sources:
         -------
         Magnitude-like: `number`
             Returns a magnitude-like quantity for the star.
-
-        Raises
-        ------
-        `AttributeError`:
-            If instance's luminosity has not been determined, yet.
         """
         return -2.5 * np.log10(self.luminosity)
 
     def export_sources(self, filename):
+        """
+        Function to export the generated sources to an HDF5 file.
+
+        Parameters
+        ----------
+        filename: `string` or `Path`
+            The name of the file to export the sources in.
+        """
         filename = Path(filename)
         if filename.suffixes[-1].lower() != '.h5':
             filename = filename.with_suffix('.h5')

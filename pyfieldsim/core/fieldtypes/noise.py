@@ -9,57 +9,32 @@ from pyfieldsim.core.fieldtypes.field import Field
 from pyfieldsim.utils.metadata import read_metadata, save_metadata
 
 
-def ph_noise(sources_file, delta_time):
-    warnings.warn(DeprecationWarning)
-    sources_file = Path(sources_file).with_suffix('.h5')
-
-    with h5py.File(sources_file, 'r') as f:
-        sources = np.asarray(f['luminosity'])
-        sources_coords = np.asarray(f['coords'])
-
-    metadata = read_metadata(sources_file)
-    seed = metadata['seed']
-    ext_shape = metadata['ext_shape']
-
-    rng = np.random.default_rng(seed=seed)
-
-    # Generating the auxiliary fields and simulating exposure time
-    # variation with `delta_time`
-    exposed_sources = sources * delta_time
-
-    # Poisson noise generation of photon noise around the (integer)
-    # luminosity of the star as mean
-    w_ph_noise = rng.poisson(exposed_sources)
-
-    metadata = {
-        "delta_time": delta_time
-    }
-
-    save_metadata(
-        metadata=metadata,
-        filename='P' + sources_file.name[1:]
-    )
-
-    ph_field = np.zeros(ext_shape)
-    for _, c in enumerate(sources_coords):
-        ph_field[c[0], c[1]] = w_ph_noise[_]
-    ph_field = np.where(
-        ph_field < 0, 0, ph_field
-    )
-
-    return Field(
-        ph_field,
-        seed=seed,
-        sources_file=str(sources_file),
-        bkgnd_file=None,
-        gain_map_file=None,
-        dk_c_file=None
-    )
-
-
 def background(sources_file,
                snr,
                sigma=None, rel_var=None):
+    """
+    Function that creates a background Field for a set of sources, with a
+    given SNR and relative variation (or sigma).
+
+    Parameters
+    ----------
+    sources_file: `string` or `Path`
+        The HDF5 file containing the generated sources.
+    snr: `number`
+        The S/N between the mean of the background and the brightest source
+        in the field.
+    sigma: `number`
+        The standard deviation for generating a gaussian background. If
+        rel_var is set, this is ignored.
+    rel_var: `number`
+        The relative standard deviation to create a gaussian background.
+
+    Returns
+    -------
+    `Field` instance
+        A `Field` object containing the generated background for the set of
+        sources.
+    """
     sources_file = Path(sources_file).with_suffix('.h5')
     field_file = Field.from_sources(sources_file)
 
@@ -93,6 +68,8 @@ def background(sources_file,
         loc=mean_bgnd, scale=sigma,
         size=sim_meta['ext_shape'],
     )
+    # If the generated background is negative on a pixel, it is set to 0 for
+    # the given pixel.
     bgnd = np.where(
         bgnd < 0, 0, bgnd
     )

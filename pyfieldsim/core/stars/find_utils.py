@@ -255,7 +255,49 @@ def plot_recovered_stars(
         b_u=None,
         forced=False
 ):
-    # TODO: from here
+    """
+    Function to plot the recovered stars over the field.
+
+    Parameters
+    ----------
+    field: `numpy.ndarray`
+        The field over which the recovered stars are plotted.
+    stars: `iterable` of `Star` objects
+        The list of recovered stars
+    pos_errors: `iterable`
+        Iterable of shape (N, 4), where N is the shape of parameter 'stars'.
+    shape: `tuple`
+        The shape of the field.
+    out_path: `string` or `Path`-like object
+        The path to the folder in which the plot will be saved.
+    show_sources: `boolean`
+        If 'True', the real sources are shown as green squares the size of a
+        pixel. If 'False', the real sources are not shown.
+    is_flat: `boolean`
+        Wether the field contains background or not.
+    sources: `iterable`
+        An iterable of real sources in the field. It is used only is
+        'show_sources=True'. Default is 'None'.
+    brt_coords: `iterable` of length 2
+        The coordinates of the selected bright pixel. Default is 'None'.
+    radius: `number`
+        The radius of pixels around the bright pixels that are eliminated in
+        the iteration. Default is 'None'.
+    show_mask: `boolean`
+        Wether to show the masked pixels or not. Default is 'False'.
+    masked_field: `numpy.ma.masked_array` or 'None'
+        The field with the masked pixels from previous iterations. Default
+        is None.
+    sigma: `number`
+        If 'show_mask=True', the sigma for the PSF to determine the mask
+        radius. Default is 'False'.
+    b_u: `number`
+        The upper confidence level for the background to select the radius
+        of the mask. Default is 'None'.
+    forced: `boolean`
+        If True, the pixels within `radius` from `brt_coords` are removed
+        from the mask.
+    """
     out_path = Path(out_path)
 
     fig, ax = plt.subplots()
@@ -342,6 +384,34 @@ def plot_recovered_stars(
 def run_mcmc(
         model, *, name, out_folder='./', verbose=2, force=False
 ):
+    """
+    Function to run the MonteCarlo sampling for the inference.
+
+    Parameters
+    ----------
+    model: `cpnest.model.Model`
+        One of the models available in pyfieldsim.core.bayes
+    name: `string`
+        The name of the mcmc run to be used to save the samples.
+    out_folder: `string` or `Path`-like object
+        The output folder where to save the corner plot. Default is './'.
+    verbose: int
+        Verbosity level of the run. See cpnest.CPNest documentation. Default is '2'-
+    force: `boolean`
+        If 'True', the run is repeated overwriting a previous run. If
+        `False`, the sampling is performed only if no folders with the same
+        name are available. Default is `False`.
+
+    Returns
+    -------
+    post: `numpy.ndarray`
+        A structured array containing the posterior samples. See the
+        documentation from cpnest.CPNest and related methods.
+    logZ: `float`
+        The logarithm of the evidence. To be used for model comparison.
+    path: `Path`
+        The output path of the folder for the samples.
+    """
     path = Path(f'./samplings/sampling_output_{name}/')
     output = Path(path)
     out_folder = Path(out_folder)
@@ -531,6 +601,46 @@ def select_hypothesis(
         is_flat,
         sigma=None,
 ):
+    """
+    Function that, given two hypotheses and their evidences, chooses between
+    one of the two.
+
+    Parameters
+    ----------
+    hyp_1: `string`
+        The name of the first hypothesis.
+    hyp_2: `string`
+        The name of the second hypothesos
+    logZ: `dict`
+        A dictionary with keys given by `hyp_1` and `hyp_2` and values given by
+        their evidences.
+    logB_lim_hyp2: `float`
+        The limit to the bayes factor over which to accept the hypothesis 1
+        over the hypothesis 2.
+    stars: `iterable` of `Star` objects
+        The array of identified stars, where to store a newly identified star.
+    pos_errors: `iterable` of shape (N, 1, 2)
+        An iterable containing the errors on x and y positions, to add the
+        one from the newly added star.
+    post_1: `numpy.ndarray`
+        The posterior samples from the first hypothesis.
+    post_2: `numpy.ndarray`
+        The posterior samples from the second hypothesis.
+    is_flat: `boolean`
+        Wether the field is flat or not.
+    sigma: `float`
+        The width of the PSF. Default is 'None'.
+
+    Returns
+    -------
+    sigma: `float`
+        The width of the PSF. If the two hypothesis are the single or double
+        PSF star, `sigma` is inferred.
+    b_u: `float`
+        The upper background level limit at the 99% confidence level.
+    hyp: `string`
+        Either `hyp_1` or `hyp_2`, depending on which one is selected.
+    """
     logBayesFactor = logZ[hyp_1] - logZ[hyp_2]
 
     print(f"--- logZ_{hyp_1} = {logZ[hyp_1]:.1f}")
@@ -546,7 +656,7 @@ def select_hypothesis(
             )
 
         if not (hyp_2 == 'b'):
-            # if hyp_2 is not 'b' but 's', the two hypotesis are switched.
+            # if hyp_2 is not 'b' but 's', the two hypothesis are switched.
 
             post_tmp = post_1.copy()
             post_1 = post_2.copy()
@@ -575,6 +685,30 @@ def select_hypothesis(
 def select_valid_pixels(
         field, *, radius, shape, brt_coords
 ):
+    """
+    Function to select the coordinates for the valid pixels from a field,
+    around a bright point and within a certain radius.
+
+    Parameters
+    ----------
+    field: `numpy.ndarray`
+        The imaged field.
+    radius: `float`
+        The radius within which pixels are selected.
+    shape: `tuple`
+        The shape of the field.
+    brt_coords: iterable of length 2
+        The coordinates for the point around which pixels should be selected.
+
+    Returns
+    -------
+    valid_coords: `numpy.ndarray`
+        The array of coordinates of selected pixels within `radius` distance
+        from `brt_coords`.
+    valid_counts: `numpy.ndarray`
+        The array of counts at those coordinates.
+
+    """
     valid_coords = np.array([
         [x, y] for x in range(shape[0]) for y in range(shape[1])
         if dist([x, y], brt_coords) <= radius and field[x, y] > 0
@@ -589,6 +723,10 @@ def select_valid_pixels(
 
 # noinspection PyArgumentList,PyProtectedMember
 def update_title_fmts(c, post):
+    """
+    Function to update the format functions for the strings containing the
+    errorbars of data.
+    """
     dim_space = np.sqrt(len(c.axes)).astype(int)
     names = post.dtype.names
 

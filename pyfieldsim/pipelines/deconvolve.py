@@ -6,7 +6,6 @@ from pathlib import Path
 from skimage import restoration
 
 from pyfieldsim.core.psf import GaussKernel
-from pyfieldsim.core.stars.find_utils import plot_recovered_stars
 
 from pyfieldsim.core.fieldtypes.field import Field
 from pyfieldsim.utils.metadata import read_metadata, save_metadata
@@ -14,17 +13,23 @@ from pyfieldsim.utils.metadata import read_metadata, save_metadata
 
 # noinspection PyArgumentList,PyUnboundLocalVariable,PyTypeChecker
 def main():
+    """
+    Pipeline that applies the Richardson-Lucy deconvolution algorithm to a
+    field of stars.
+    """
     parser = ag.ArgumentParser(
         prog='fs-deconvolve',
-        description='',
+        usage=__doc__,
     )
-    parser.add_argument('data_file')
+    parser.add_argument('data_file',
+                        help="The field to apply te RL deconvolution to.")
     parser.add_argument('-k', '--psf-width', type=float, required=True,
                         dest='psf_width', default=None,
-                        help='')
+                        help="The width of the PSF.")
     parser.add_argument("-n", "--iterations", type=int,
                         dest='iterations', default=30,
-                        help="")
+                        help="Number of iterations for the Richardson-Lucy "
+                             "algorithm.")
 
     args = parser.parse_args()
 

@@ -7,23 +7,30 @@ from pyfieldsim.core.fieldtypes.noise import background
 
 
 def main():
+    """
+    Pipeline to generate a background field for the simulation.
+    """
     parser = ag.ArgumentParser(
         prog='fs-generate-background',
-        description='',
+        usage=__doc__,
     )
     parser.add_argument('sources')
     parser.add_argument('--snr', type=float,
                         dest='snr', default=10,
-                        help="")
+                        help="Signal to Noise Ratio of the brightest source "
+                             "in the field.")
     parser.add_argument('--sigma', type=float,
                         dest='sigma', default=None,
-                        help='')
+                        help="Sigma of the normal distribution of the "
+                             "bacground values.")
     parser.add_argument('-r', '--relative-sigma', type=float,
                         dest='rel_var', default=0.1,
-                        help='')
+                        help="Relative sigma of the normal distribution of "
+                             "the background values.")
     parser.add_argument("-o", "--output",
                         dest='out_folder', default=None,
-                        help="")
+                        help="The folder where to save the output of this "
+                             "pipeline.")
 
     args = parser.parse_args()
 

@@ -12,14 +12,20 @@ from pyfieldsim.utils.metadata import save_metadata
 
 
 def main():
+    """
+    Pipeline to evaluate the background over a field.
+    """
     parser = ag.ArgumentParser(
         prog='fs-eval-background',
-        description='',
+        usage=__doc__,
     )
-    parser.add_argument('data')
+    parser.add_argument('data',
+                        help="The data over which the background is "
+                             "evaluated.")
     parser.add_argument("-o", "--output",
                         dest='out_folder', default=None,
-                        help="")
+                        help="The folder where to save the output of this "
+                             "pipeline.")
 
     args = parser.parse_args()
 

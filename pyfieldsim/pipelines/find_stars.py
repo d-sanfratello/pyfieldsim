@@ -27,32 +27,39 @@ from pyfieldsim.utils.save_stars import save_stars
 
 # noinspection PyArgumentList,PyUnboundLocalVariable
 def main():
+    """
+    Pipeline to infer the position and brightness of stars in the field.
+    """
     parser = ag.ArgumentParser(
         prog='fs-find-stars',
-        description='',
+        usage=__doc__,
     )
     parser.add_argument('data_file')
     parser.add_argument("-w", "--width", type=float,
                         dest='initial_width', required=True,
-                        help="")
+                        help="Initial search width for the algorithm.")
     parser.add_argument("-f", "--flat", action='store_true',
                         dest='is_flat', default=False,
-                        help="")
+                        help="Wether the field is flat or not.")
     parser.add_argument("-s", "--sources", action='store_true',
                         dest='show_sources', default=False,
-                        help="")
+                        help="Wheter to show the true sources in the field "
+                             "plot or not.")
     parser.add_argument("-o", "--output",
                         dest='out_folder', default=None,
-                        help="")
+                        help="The folder where to save the output of this "
+                             "pipeline.")
     parser.add_argument("--padding", type=int,
                         dest='padding', default=0,
-                        help="")
+                        help="A padding to be removed from the edges to "
+                             "remove artifacts due to the RL deconvolution.")
     parser.add_argument("--no-force", action='store_false',
                         dest='no_force', default=True,
-                        help="")
+                        help="Wether to force overwriting recovered stras or "
+                             "not.")
     parser.add_argument("--options",
                         dest='options', default=None,
-                        help="")
+                        help="String to be added to the name of the output.")
 
     args = parser.parse_args()
 
@@ -334,12 +341,7 @@ def main():
         A_bounds = [
             [brt / 10, 100 * brt]
         ]
-        # b_bounds = [[
-        #     max(
-        #         bkgnd_analysis_metadata['mean']
-        #         - 2 * bkgnd_analysis_metadata['std'], 1),
-        #     bkgnd_analysis_metadata['mean'] + bkgnd_analysis_metadata['std']
-        # ]]
+
         b_bounds = [
             [0, 1]
         ]
@@ -385,21 +387,6 @@ def main():
         else:
             logZ_b = -np.inf
             post_b = None
-
-        # If bright point (in recovery) lies farther than 2 sigma from the
-        # saved mean, it means we are analyzing a different region.
-        # if dist(
-        #         brt_coords,
-        #         (np.median(post_s['mu_y']), np.median(post_s['mu_x']))
-        # ) >= radius and not args.is_flat:
-        #     logZ_b = +np.inf
-        #
-        # for s in stars:
-        #     s_ = (np.median(post_s['mu_y']), np.median(post_s['mu_x']))
-        #     if dist((s.mu[0], s.mu[1]),
-        #             s_) < sigma:
-        #         logZ_b = +np.inf
-        #         break
 
         logZ['b'] = logZ_b
 

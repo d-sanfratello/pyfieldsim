@@ -17,20 +17,26 @@ from pyfieldsim.utils.save_stars import load_stars, save_stars
 
 # noinspection PyArgumentList,PyUnboundLocalVariable,PyTypeChecker
 def main():
+    """
+    Pipeline to remove aliases from a set of recovered stars.
+    """
     parser = ag.ArgumentParser(
         prog='fs-anti-alias',
-        description='',
+        usage=__doc__,
     )
-    parser.add_argument('stars')
+    parser.add_argument('stars',
+                        help="The recovered stars to which anti-aliasing has "
+                             "to be applied")
     parser.add_argument('-f', action='store_true',
                         dest='is_flat', default=False,
-                        help="")
+                        help="Wether the field is flat or not.")
     parser.add_argument("-s", "--sources", action='store_true',
                         dest='show_sources', default=False,
-                        help="")
+                        help="Wheter to show the true sources in the field "
+                             "plot or not.")
     parser.add_argument("--options",
                         dest='options', default=None,
-                        help="")
+                        help="String to be added to the name of the output.")
 
     args = parser.parse_args()
 

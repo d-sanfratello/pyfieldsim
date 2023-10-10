@@ -14,17 +14,23 @@ from pyfieldsim.errors.exceptions import WrongDataFileError
 
 
 def main():
+    """
+    Pipeline that counts the stars in a given simulation.
+    """
     parser = ag.ArgumentParser(
         prog='fs-count-stars',
-        description='',
+        usage=__doc__,
     )
-    parser.add_argument('data_file')
+    parser.add_argument('data_file',
+                        help="Sources file to count.")
     parser.add_argument("--no-log", action='store_true', default=False,
                         dest='no_log',
-                        help="")
+                        help="Wether to show the counts or the decimal "
+                             "logarithm of the counts in the plot")
     parser.add_argument("-o", "--output",
                         dest='out_folder', default=None,
-                        help="")
+                        help="The folder where to save the output of this "
+                             "pipeline.")
 
     args = parser.parse_args()
 
@@ -35,42 +41,6 @@ def main():
 
     data_file = Path(args.data_file)
 
-    """
-    Method that counts the stars in a given field, if the `ImageStatus` of
-    the image is `SINGLESTARS` or `PH_NOISE`.
-
-    Since any other step in the simulation adds background or spreads the
-    values over different pixels, usage of this method is forbidden in those
-    cases.
-
-    This method stores a copy of the image extracted at initialization and
-    finds the highest value (if `field.Field.datatype` is `LUMINOSITY` or
-    `MASS`) or the lowest (if `MAGNITUDE`). It also stores its coordinates.
-    So the pixel of the image copy at those coordinates is set to zero. This
-    process is, then, reiterated until the field is filled with zeros and
-    the values and the corrisponding coordinates are returned.
-
-    Returns
-    -------
-    recorded_stars: `numpy.ndarray`
-        Returns the array of measured values for the stars in the field.
-        Those values are in the unit defined by the field datatype. See also
-        `utils.DataType`.
-    recorded_coords: `numpy.ndarray` of numpy arrays of length 2.
-        Returns, for each value returned in `recorded_stars`, the
-        coordinates at which that values has been found.
-
-    Raises
-    ------
-    `IncompatibleStatusError`:
-        If `field.Field.status` is not `SINGLESTARS` or `PH_NOISE`. As
-        explained, this procedure wouldn't make sense with other steps of
-        the simulation.
-
-    See Also
-    --------
-    `field.Field`, `utils.DataType` and `utils.ImageStatus`.
-    """
     if data_file.name.startswith('S'):
         sources_metadata = read_metadata(data_file)
         sources_field = Field.from_sources(data_file)

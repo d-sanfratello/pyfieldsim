@@ -18,23 +18,28 @@ from pyfieldsim.utils.save_stars import save_stars
 
 # noinspection PyArgumentList,PyUnboundLocalVariable,PyTypeChecker
 def main():
+    """
+    Pipeline to export a set of identified stars from a folder structure to
+    a single metadata file.
+    """
     parser = ag.ArgumentParser(
         prog='fs-export-stars',
-        description='',
+        usage=__doc__,
     )
     parser.add_argument('main_folder', nargs='?', default='./')
     parser.add_argument('-r', required=True,
                         dest='initial_radius', type=float,
-                        help="")
+                        help="The initial search radius for the algorithm.")
     parser.add_argument('-f', action='store_true',
                         dest='is_flat', default=False,
-                        help="")
+                        help="Wether the field is flat or not.")
     parser.add_argument("-s", "--sources", action='store_true',
                         dest='show_sources', default=False,
-                        help="")
+                        help="Wheter to show the true sources in the field "
+                             "plot or not.")
     parser.add_argument("--options",
                         dest='options', default=None,
-                        help="")
+                        help="String to be added to the name of the output.")
 
     args = parser.parse_args()
 

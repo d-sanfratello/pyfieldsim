@@ -9,20 +9,26 @@ from pyfieldsim.utils.metadata import read_metadata
 
 
 def main():
+    """
+    Pipeline to plot a field of stars.
+    """
     parser = ag.ArgumentParser(
         prog='fs-plot',
-        description='',
+        description=__doc__,
     )
-    parser.add_argument('data')
+    parser.add_argument('data',
+                        help="The data to plot.")
     parser.add_argument("-o", "--output",
                         dest='out_folder', default=None,
-                        help="")
+                        help="The folder where to save the output of this "
+                             "pipeline.")
     parser.add_argument("--crop", action='store_true',
                         dest='crop', default=False,
-                        help="")
+                        help="Crop factor to remove the edges of the field.")
     parser.add_argument("--no-log", action='store_true',
                         dest='no_log', default=False,
-                        help="")
+                        help="If show the number of counts or the decimal "
+                             "logarithm of that number.")
 
     args = parser.parse_args()
 

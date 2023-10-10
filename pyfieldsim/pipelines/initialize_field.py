@@ -8,35 +8,42 @@ from pyfieldsim.utils.parse import (get_filename,)
 
 
 def main():
+    """
+    Pipeline to initialize the field of stars.
+    """
     parser = ag.ArgumentParser(
         prog='fs-initialize',
-        description='',
+        usage=__doc__
     )
     parser.add_argument("-f", "--field-size", type=int,
                         dest='field_size', default=100,
-                        help="")
+                        help="Size of one side of the final field.")
     parser.add_argument("-m", "--min-mass", type=float,
-                        dest='m_min', default=1)
+                        dest='m_min', default=1,
+                        help="Lower bound on mass for the Salpeter-like IMF.")
     parser.add_argument("-M", "--max-mass", type=float,
-                        dest='m_max', default=350)
+                        dest='m_max', default=350,
+                        help="Upper bound on mass for the Salpeter-like IMF.")
     parser.add_argument("-d", "--density", type=float,
                         dest='density', default=2e-3,
-                        help="")
+                        help="Density of stars in the field.")
     parser.add_argument("-i", "--imf-exponent", type=float,
                         dest='e_imf', default=2.4,
-                        help="")
+                        help="Exponent of the IMF power-law.")
     parser.add_argument("-l", "--lm-exponent", type=float,
                         dest='e_lm', default=3,
-                        help="")
+                        help="Exponent in the mass-luminosity relation.")
     parser.add_argument("-c", "--lm-const", type=float,
                         dest='cst_lm', default=1,
-                        help="")
+                        help="Multiplication constant in the mass-luminosity "
+                             "relation.")
     parser.add_argument("-o", "--output",
                         dest='out_folder', default=None,
-                        help="")
+                        help="The folder where to save the output of this "
+                             "pipeline.")
     parser.add_argument("--seed", type=int,
                         dest='seed', default=None,
-                        help="")
+                        help="The seed for the simulation process.")
 
     args = parser.parse_args()
 

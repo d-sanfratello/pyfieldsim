@@ -7,11 +7,15 @@ from pyfieldsim.utils.metadata import read_metadata
 
 
 def main():
+    """
+    Pipeline to show metadata from a file.
+    """
     parser = ag.ArgumentParser(
         prog='fs-show-meta',
-        description='',
+        usage=__doc__,
     )
-    parser.add_argument('file')
+    parser.add_argument('file',
+                        help="The file whose metadata are shown.")
 
     args = parser.parse_args()
 

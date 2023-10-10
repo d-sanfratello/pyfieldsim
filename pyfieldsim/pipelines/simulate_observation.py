@@ -11,29 +11,35 @@ from pyfieldsim.utils.metadata import read_metadata, save_metadata
 
 
 def main():
+    """
+    Pipeline to simulate a simulated observation of a field.
+    """
     parser = ag.ArgumentParser(
         prog='fs-observation',
-        description='',
+        usage=__doc__,
     )
-    parser.add_argument('sources')
+    parser.add_argument('sources',
+                        help="The name of the simulated sources to observe.")
     parser.add_argument('-t', '--delta-time', type=float,
                         dest='delta_time', default=1,
-                        help="")
+                        help="Time integration constant.")
     parser.add_argument('-b', action='store_true',
                         dest='background', default=False,
-                        help="")
+                        help="Flag to add a background or to keep the field "
+                             "flat.")
     parser.add_argument('-k', '--psf-width', type=float,
                         dest='psf_width', default=None,
-                        help='')
+                        help="With of the PSF")
     parser.add_argument('-g', action='store_true',
                         dest='gain_map', default=False,
-                        help="")
+                        help="Flag to add the gain map of the CCD.")
     parser.add_argument('-c', action='store_true',
                         dest='dark_current', default=False,
-                        help="")
+                        help="Flag to add the dark current of the CCD.")
     parser.add_argument("-o", "--output",
                         dest='out_folder', default=None,
-                        help="")
+                        help="The folder where to save the output of this "
+                             "pipeline.")
 
     args = parser.parse_args()
 

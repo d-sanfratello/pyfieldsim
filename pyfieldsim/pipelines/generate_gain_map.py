@@ -7,20 +7,25 @@ from pyfieldsim.core.fieldtypes.sensor import create_gain_map
 
 
 def main():
+    """
+    Pipeline to generate a gain map for the CCD.
+    """
     parser = ag.ArgumentParser(
         prog='fs-generate-gain_map',
-        description='',
+        usage=__doc__,
     )
     parser.add_argument('sources')
     parser.add_argument('-m', '--mean-gain', type=float,
                         dest='mean_gain', default=1,
-                        help='')
+                        help='Mean of the gain map of the sensor.')
     parser.add_argument('-r', '--relative-sigma', type=float,
                         dest='rel_var', default=0.05,
-                        help='')
+                        help='Relative sigma for the distribution of gain '
+                             'values.')
     parser.add_argument("-o", "--output",
                         dest='out_folder', default=None,
-                        help="")
+                        help="The folder where to save the output of this "
+                             "pipeline.")
 
     args = parser.parse_args()
 

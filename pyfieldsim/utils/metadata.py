@@ -4,6 +4,20 @@ from pathlib import Path
 
 
 def read_metadata(sources_file):
+    """
+    Function to read the metadata of a file.
+
+    Parameters
+    ----------
+    sources_file: `string` or `Path`-like object
+        File from which metadata are read.
+
+    Returns
+    -------
+    metadata: `dict`
+        A dictionary containing the recovered metadata.
+
+    """
     filename = Path(sources_file).with_suffix('')
     if not filename.name.endswith('_meta'):
         filename = filename.parent.joinpath(
@@ -37,6 +51,16 @@ def read_metadata(sources_file):
 
 
 def save_metadata(metadata, filename):
+    """
+    Function to save the metadata of an object in a file.
+
+    Parameters
+    ----------
+    metadata: `dict`
+        The dictionary containing the metadata to be saved.
+    filename: `string` or `Path`-like object
+        The path to the metadata file.
+    """
     filename = Path(filename).with_suffix('')
     filename = Path(filename.name + '_meta.h5')
     if filename.suffix.lower() != '.h5':

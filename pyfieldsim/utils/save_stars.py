@@ -7,6 +7,19 @@ from pyfieldsim.core.stars.star import new_star
 
 
 def save_point_stars(stars, data_file, options=None):
+    """
+    Function to save points stars to a file.
+
+    Parameters
+    ----------
+    stars: iterable of `PointStar` objects
+        The iterable of stars to be saved.
+    data_file: `string` or `Path`-like object
+        The name of the simulated sources file to generate a name with the
+        same structure.
+    options: `string`
+        String to be added to the name of the file.
+    """
     stars = np.asarray(stars)
     n_stars = stars.shape[0]
 
@@ -37,6 +50,23 @@ def save_point_stars(stars, data_file, options=None):
 
 
 def save_stars(stars, data_file, saved_ids, hyp_psf, options=None):
+    """
+    Function to save the recovered stars into a file.
+
+    Parameters
+    ----------
+    stars: `iterable` of `Star` objects
+        The iterable of recovered stars to be saved.
+    data_file: `string` or `Path`-like object
+        The name of the simulated sources file to generate a name with the
+        same structure.
+    saved_ids: `iterable`
+        The iterable of recovered IDs of each recovered star.
+    hyp_psf: `string`
+        The single or double star hypothesis used to infer the PSF width.
+    options: `string`
+        String to be added to the name of the file.
+    """
     stars = np.asarray(stars)
     n_stars = stars.shape[0]
 
@@ -103,6 +133,28 @@ def save_stars(stars, data_file, saved_ids, hyp_psf, options=None):
 
 
 def load_stars(data_file, options=None):
+    """
+    Function to load a file of recovered stars.
+
+    Parameters
+    ----------
+    data_file: `string` or `Path`-like object
+        The name of the simulated sources file to generate a name with the
+        same structure.
+    options: `string`
+        String to be added to the name of the file.
+
+    Returns
+    -------
+    stars: `iterable`
+        An iterable of `Star` objects.
+    pos_errors: `iterable`
+        The iterable of error bars on position for each star.
+    id: `iterable`
+        The iterable of identification IDs.
+    hyp_psf: `string`
+        The single or double star hypothesis used to infer the PSF width.
+    """
     file = Path('R' + data_file.stem[1:]).with_suffix('.h5')
     suffix = file.suffix
     if options is not None:
@@ -134,6 +186,20 @@ def load_stars(data_file, options=None):
 
 
 def find_rounding_decimals(str_):
+    """
+    Function to round decimals in the string of a number
+
+    Parameters
+    ----------
+    str_: `string`
+        The string in which decimals are to be rounded.
+
+    Returns
+    -------
+    decimals: `int`
+        The number of decimals to be rounded.
+
+    """
     mantissa = str_.split('e')[0]
     exponent = str_.split('e')[1]
 
@@ -146,6 +212,22 @@ def find_rounding_decimals(str_):
 
 
 def find_rounding_from_errs(value, errors):
+    """
+    Function to find the correct number of significant digits given the
+    error bars.
+
+    Parameters
+    ----------
+    value: `float`
+        The value to be rounded.
+    errors: iterable of error bars
+        The error bars of the value.
+
+    Returns
+    -------
+    value: `string`
+        The value string formatted to the correct number of significant digits.
+    """
     min_error = min(errors[0], errors[1])
     odg_err = np.floor(np.log10(min_error)).astype(int)
     odg_meas = np.floor(np.log10(value)).astype(int)

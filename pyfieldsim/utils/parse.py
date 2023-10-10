@@ -2,6 +2,20 @@ from datetime import datetime
 
 
 def get_filename(out_folder):
+    """
+    Function to generate the filename for a simulation, given the date and
+    time.
+
+    Parameters
+    ----------
+    out_folder: `string` or `Path`-like object
+        The folder where the file will be saved.
+
+    Returns
+    -------
+    filename: `Path`
+        The path to the file with the generated filename.
+    """
     now = datetime.utcnow()
     now = [
         getattr(now, _)
